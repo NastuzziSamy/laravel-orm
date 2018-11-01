@@ -2,99 +2,145 @@
 
 namespace NastuzziSamy\Laravel\Fields;
 
+use Illuminate\Database\Schema\ColumnDefinition;
+
 abstract class Field
 {
     protected $name;
-    protected $fieldName;
+    protected $column;
     protected $type;
-    protected $default;
-
     protected $fillable = true;
-    protected $unique = false;
-    protected $nullable = false;
-    protected $increments = false;
+    protected $lock = false;
 
-    public function __construct($name = null)
+    public function __construct(string $name = null)
     {
-        $this->fieldName($name);
+        $this->column = new ColumnDefinition(array_merge(
+            $this->getDefaultProperties(),
+            [
+                'type' => $this->type,
+            ]
+        ));
+
+        $this->name($name);
     }
 
-    public function fieldName($name)
-    {
-        $this->fieldName = $this->fieldName ?? $name;
-        $this->name = $this->name ?? $name;
+    // TODO
+    public static function __callStatic(string $method, array $args) {
+        return (new self)->$method(...$args);
+    }
+
+    public function __call(string $method, array $args) {
+        $this->checkLock();
+
+        $this->column = $this->column->$method(...$args);
 
         return $this;
     }
 
-    public function name($name)
+    public function __get($key)
     {
-        $this->name = $name;
+        if (property_exists($this, $key)) {
+            return $this->$key;
+        }
+        else {
+            return $this->column->$key;
+        }
+    }
+
+    public function __set($key, $value)
+    {
+        if ($key == 'name') {
+            $this->name($value);
+
+            return $value;
+        }
+
+        $this->checkLock();
+
+        $this->column->$key = $value;
+    }
+
+    public function __isset($key)
+    {
+        return isset($this->column->$key);
+    }
+
+    public function __unset($key)
+    {
+        $this->checkLock();
+
+        unset($this->column->$key);
+    }
+
+    public function name($value) {
+        $this->checkLock();
+
+        $this->name = $value;
+
+        $this->column->name = $value;
 
         return $this;
     }
 
-    public function fillable($fillable = true)
-    {
+    public function checkLock() {
+        if ($this->lock) {
+            throw new \Exception('The field is locked, nothing can change');
+        }
+    }
+
+    public function lock(string $name) {
+        if (!$this->name) {
+            $this->name($name);
+        }
+
+        $this->lock = true;
+
+        return $this;
+    }
+
+    public function fillable(bool $fillable = true) {
         $this->fillable = $fillable;
 
         return $this;
     }
 
-    public function unique($unique = true)
-    {
-        $this->unique = $unique;
+    abstract public function getDefaultProperties(): array;
 
-        return $this;
+    public function get($model) {
+        $value = $model->getAttribute($this->name);
+
+        if ($value === null) {
+            return $value;
+        }
+
+        switch ($this->type) {
+            case 'int':
+            case 'integer':
+                return (int) $value;
+
+            case 'bool':
+            case 'boolean':
+                return (bool) $value ;
+
+            case 'float':
+            case 'double':
+            case 'real':
+                return (float) $value;
+
+            case 'string':
+                return (string) $value;
+
+            default:
+                return $value;
+        }
     }
 
-    public function nullable($nullable = true)
-    {
-        $this->nullable = $nullable;
-
-        return $this;
-    }
-
-    public function increments()
-    {
-        $this->increments = $increments;
-
-        return $this;
-    }
-
-    public function setDefault($value)
-    {
-        $this->default = $value;
-
-        return $this;
-    }
-
-    public function getValue($model)
-    {
-        return $model->getAttribute($this->fieldName);
-    }
-
-    public function createTableField($table) {
-        return $table->{$this->type}($this->fieldName);
-    }
-
-    public function getFieldName() {
-        return $this->fieldName;
-    }
-
-    public function getName() {
-        return $this->name;
-    }
-
-    public function isFillable() {
-        return $this->fillable;
-    }
-
-    public function isUnique() {
-        return $this->unique;
-    }
-
-    public function generateTable() {
-
+    public function call($model, ...$args) {
+        if (count($args) === 0) {
+            return $this;
+        }
+        else {
+            return $model->where($this->columnName, ...$args);
+        }
     }
 }

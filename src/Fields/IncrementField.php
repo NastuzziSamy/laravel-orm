@@ -2,12 +2,23 @@
 
 namespace NastuzziSamy\Laravel\Fields;
 
-use NastuzziSamy\Laravel\Interfaces\IsAPrimaryField;
-
-class IncrementField extends IntegerField implements IsAPrimaryField
+class IncrementField extends IntegerField
 {
+    protected $column;
     protected $fillable = false;
-    protected $unique = true;
-    protected $increments = true;
-    protected $default = 1;
+
+    public function __construct(string $name = null)
+    {
+        parent::__construct(true, $name);
+    }
+
+    public function getDefaultProperties(): array
+    {
+        return array_merge(
+            parent::getDefaultProperties(),
+            [
+                'autoIncrement' => true,
+            ]
+        );
+    }
 }
