@@ -7,12 +7,12 @@ class StringField extends Field
     protected $type = 'string';
     private $length;
 
-    public function __construct(int $length = null, string $name = null)
+    public function __construct(int $length = null)
     {
-        parent::__construct($name);
+        parent::__construct();
     }
 
-    public function getDefaultProperties(): array
+    public function _getDefaultProperties(): array
     {
         return [
             'length' => $this->length

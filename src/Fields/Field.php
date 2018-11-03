@@ -3,38 +3,38 @@
 namespace NastuzziSamy\Laravel\Fields;
 
 use Illuminate\Database\Schema\ColumnDefinition;
+use NastuzziSamy\Laravel\Traits\StaticCallable;
 
 abstract class Field
 {
+    use StaticCallable;
+
     protected $name;
     protected $column;
     protected $type;
     protected $fillable = true;
-    protected $lock = false;
+    protected $locked = false;
 
-    public function __construct(string $name = null)
+    public function __construct()
     {
         $this->column = new ColumnDefinition(array_merge(
-            $this->getDefaultProperties(),
+            $this->_getDefaultProperties(),
             [
                 'type' => $this->type,
             ]
         ));
-
-        $this->name($name);
-    }
-
-    // TODO
-    public static function __callStatic(string $method, array $args) {
-        return (new self)->$method(...$args);
     }
 
     public function __call(string $method, array $args) {
-        $this->checkLock();
+        $this->_checkLock();
 
-        $this->column = $this->column->$method(...$args);
+        if (method_exists($this, $method)) {
+            return $this->$method(...$args) ?? $this;
+        } else {
+            $this->column = $this->column->$method(...$args);
 
-        return $this;
+            return $this;
+        }
     }
 
     public function __get($key)
@@ -49,13 +49,7 @@ abstract class Field
 
     public function __set($key, $value)
     {
-        if ($key == 'name') {
-            $this->name($value);
-
-            return $value;
-        }
-
-        $this->checkLock();
+        $this->_checkLock();
 
         $this->column->$key = $value;
     }
@@ -67,44 +61,46 @@ abstract class Field
 
     public function __unset($key)
     {
-        $this->checkLock();
+        $this->_checkLock();
 
         unset($this->column->$key);
     }
 
-    public function name($value) {
-        $this->checkLock();
+    protected function _name(string $value) {
+        $this->_checkLock();
 
         $this->name = $value;
 
         $this->column->name = $value;
-
-        return $this;
     }
 
-    public function checkLock() {
-        if ($this->lock) {
+    public function getName() {
+        return $this->name;
+    }
+
+    public function getFieldName() {
+        return $this->name;
+    }
+
+    protected function lock(string $name) {
+        $this->_name($name);
+
+        $this->locked = true;
+    }
+
+    protected function fillable(bool $fillable = true) {
+        $this->_checkLock();
+
+        $this->fillable = $fillable;
+    }
+
+    protected function _checkLock() {
+        if ($this->locked) {
             throw new \Exception('The field is locked, nothing can change');
         }
     }
 
-    public function lock(string $name) {
-        if (!$this->name) {
-            $this->name($name);
-        }
-
-        $this->lock = true;
-
-        return $this;
-    }
-
-    public function fillable(bool $fillable = true) {
-        $this->fillable = $fillable;
-
-        return $this;
-    }
-
-    abstract public function getDefaultProperties(): array;
+    abstract protected function _getDefaultProperties(): array;
 
     public function get($model) {
         $value = $model->getAttribute($this->name);
@@ -137,10 +133,18 @@ abstract class Field
 
     public function call($model, ...$args) {
         if (count($args) === 0) {
-            return $this;
+            return $this->relateToModel($model);
         }
         else {
-            return $model->where($this->columnName, ...$args);
+            return $this->scopeWhere($model, ...$args);
         }
+    }
+
+    public function relateToModel($model) {
+        return $this;
+    }
+
+    public function scopeWhere($model, ...$args) {
+        return $model->where($this->columnName, ...$args);
     }
 }
