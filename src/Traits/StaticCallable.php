@@ -1,6 +1,6 @@
 <?php
 
-namespace NastuzziSamy\Laravel\Traits;
+namespace LaravelORM\Traits;
 
 Trait StaticCallable {
     public static function __callStatic(string $method, array $args) {

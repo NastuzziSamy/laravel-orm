@@ -1,10 +1,11 @@
 <?php
 
-namespace NastuzziSamy\Laravel\FakeFields;
+namespace LaravelORM\FakeFields;
 
-use NastuzziSamy\Laravel\Traits\StaticCallable;
+use LaravelORM\Traits\StaticCallable;
+use LaravelORM\Interfaces\IsAField;
 
-abstract class FakeField
+abstract class FakeField implements IsAField
 {
     use StaticCallable;
 

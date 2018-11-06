@@ -1,6 +1,6 @@
 <?php
 
-namespace NastuzziSamy\Laravel\Interfaces;
+namespace LaravelORM\Interfaces;
 
 interface IsACallableField
 {

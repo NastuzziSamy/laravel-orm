@@ -1,17 +1,22 @@
 <?php
 
-namespace NastuzziSamy\Laravel;
+namespace LaravelORM;
 
-use NastuzziSamy\Laravel\Fields\{
-    Field, CreatedField, UpdatedField
+use LaravelORM\Fields\{
+    Field, TimestampField
 };
+use LaravelORM\CompositeFields\CompositeField;
 
-use NastuzziSamy\Laravel\Interfaces\IsAPrimaryField;
+use LaravelORM\Interfaces\{
+    IsAField, IsAPrimaryField
+};
 
 class Schema
 {
-    protected $class;
+    protected $model;
     protected $fields;
+    protected $composites;
+    protected $fakes;
     protected $primary;
     protected $index;
     protected $unique;
@@ -19,63 +24,60 @@ class Schema
     protected $timestampFields;
 
     protected $fieldManager;
-    protected $lock;
+    protected $locked;
 
-    public function __construct($class)
+    public function __construct($model)
     {
-        $this->class = $class;
+        $this->model = $model;
         $this->fields = config('database.table.fields', []);
+        $this->composites = config('database.table.composites', []);
+        $this->fakes = config('database.table.fakes', []);
         $this->primary = config('database.table.primary');
         $this->index = config('database.table.index', []);
         $this->unique = config('database.table.unique', []);
-        $this->timestamps(config('database.table.timestamps', false));
+        $this->defaultFieldConfigs = config('database.fields', []);
 
-        $this->generateFieldManager();
+        if (config('database.table.timestamps', false)) {
+            $this->timestamps();
+        }
+
+        $this->fieldManager = new FieldManager($this);
     }
 
-    protected function generateFieldManager() {
-        $this->fieldManager = new class($this) {
-            protected $schema;
+    protected function _manipulateField($field) {
+        if ($field instanceof IsAPrimaryField) {
+            $this->primary($field);
+        }
 
-            public function __construct($schema) {
-                $this->schema = $schema;
-            }
-
-            public function __get($name) {
-                return $this->schema->getField($name);
-            }
-
-            public function __set($name, $value) {
-                $this->schema->setField($name, $value);
-            }
-        };
+        return $field;
     }
 
+    // TODO: Ajouter les conf par défaut pour chaque field s'il n'existe pas => StringField: [length: 256]
     public function setField($name, $value) {
         if ($this->hasField($name)) {
             throw new \Exception('It is not allowed to reset the field '.$name);
         }
-        else if ($value instanceof string) {
-            $this->fields[$name] = new $value($name);
+        else if (is_string($value)) {
+            $value = new $value();
         }
-        else if ($value instanceof Field) {
-            $this->fields[$name] = $value->fieldName($name);
+
+        if ($value instanceof Field) {
+            $this->fields[$name] = $this->_manipulateField($value->lock($name));
+        }
+        else if ($value instanceof CompositeField) {
+            $value->lock($name);
+            $this->composites[$value->getName()] = $value;
+
+            foreach ($value->getFields() as $field) {
+                $this->fields[$field->getName()] = $this->_manipulateField($field);
+            }
+
+            foreach ($value->getFakes() as $fake) {
+                $this->fakes[$fake->getName()] = $this->_manipulateField($fake);
+            }
         }
         else {
             throw new \Exception('To set a specific field, you have to give a Field object/string');
-        }
-
-        if ($this->getFields()[$name] instanceof IsAPrimaryField) {
-            if ($this->primary) {
-                if ($this->primary instanceof Field) {
-                    $this->primary = [$this->primary];
-                }
-
-                $this->primary[] = $this->getFields()[$name];
-            }
-            else {
-                $this->primary = $this->getFields()[$name];
-            }
         }
     }
 
@@ -92,9 +94,41 @@ class Schema
     }
 
     public function getFields() {
+        return $this->fields;
+    }
+
+    public function hasFake($name) {
+        return isset($this->getFakes()[$name]);
+    }
+
+    public function getFake($name) {
+        if ($this->hasFake($name)) {
+            return $this->getFakes()[$name];
+        } else {
+            throw new \Exception($name.' fake field does not exist');
+        }
+    }
+
+    public function getFakes() {
+        return $this->fakes;
+    }
+
+    public function hasFieldOrFake($name) {
+        return isset($this->getFieldsAndFakes()[$name]);
+    }
+
+    public function getFieldOrFake($name) {
+        if ($this->hasFieldOrFake($name)) {
+            return $this->getFieldsAndFakes()[$name];
+        } else {
+            throw new \Exception($name.' real or fake field does not exist');
+        }
+    }
+
+    public function getFieldsAndFakes() {
         return array_merge(
             $this->fields,
-            $this->timestampFields
+            $this->fakes
         );
     }
 
@@ -102,7 +136,7 @@ class Schema
         $fillable = [];
 
         foreach ($this->getFields() as $name => $field) {
-            if ($field->isFillable()) {
+            if ($field->fillable) {
                 $fillable[] = $name;
             }
         }
@@ -110,8 +144,30 @@ class Schema
         return $fillable;
     }
 
+    public function getVisibleFields() {
+        $visible = [];
+
+        foreach ($this->getFields() as $name => $field) {
+            if ($field->visible) {
+                $visible[] = $name;
+            }
+        }
+
+        return $visible;
+    }
+
     public function lock() {
-        $this->lock = true;
+        $this->locked = true;
+    }
+
+    public function primary(...$fields) {
+        if ($this->primary) {
+            throw new \Exception('It is not possible de set primary fields after another');
+        }
+
+        $this->primary = $fields;
+
+        return $this;
     }
 
     public function unique(...$fields) {
@@ -123,8 +179,8 @@ class Schema
                     if ($field instanceof string) {
                         $unique[] = $this->getField($field);
                     }
-                    else if ($field instanceof Field) {
-                        if ($this->getField($field->getFieldName()) !== $field) {
+                    else if ($field instanceof IsAField) {
+                        if ($this->getFieldOrFake($field->getName()) !== $field) {
                             throw new \Exception('It is not allowed to use external field as unique');
                         }
                         else {
@@ -141,7 +197,7 @@ class Schema
                 if ($field instanceof string) {
                     $this->getField($field)->unique();
                 }
-                else if ($field instanceof Field) {
+                else if ($field instanceof IsAField) {
                     $field->unique();
                 }
             }
@@ -150,18 +206,16 @@ class Schema
         return $this;
     }
 
-    public function timestamps(bool $timestamps = true, string $created = 'created_at', string $updated = 'updated_at') {
-        $this->timestamps = $timestamps;
+    public function timestamps() {
+        try {
+            $this->setField($this->model::CREATED_AT ?? 'created_at', TimestampField::nullable());
+            $this->setField($this->model::UPDATED_AT ?? 'updated_at', TimestampField::nullable());
+        } catch (\Exception $e) {
+            throw new \Exception('Can not set timestamps. Maybe already set ?');
+        }
 
-        if ($timestamps) {
-            $this->timestampFields = [
-                $created => new CreatedField($created),
-                $updated => new UpdatedField($updated),
-            ];
-        }
-        else {
-            $this->timestampFields = [];
-        }
+        // // We make sure Laravel knows we have timestamps
+        // $this->model->timestamps = true;
 
         return $this;
     }

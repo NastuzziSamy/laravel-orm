@@ -1,8 +1,8 @@
 <?php
 
-namespace NastuzziSamy\Laravel\Fields;
+namespace LaravelORM\Fields;
 
-use NastuzziSamy\Laravel\Interfaces\IsAPrimaryField;
+use LaravelORM\Interfaces\IsAPrimaryField;
 
 class IncrementField extends IntegerField implements IsAPrimaryField
 {

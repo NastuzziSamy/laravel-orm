@@ -1,6 +1,6 @@
 <?php
 
-namespace NastuzziSamy\Laravel\Fields;
+namespace LaravelORM\Fields;
 
 class IntegerField extends Field
 {

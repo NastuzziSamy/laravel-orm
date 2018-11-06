@@ -1,10 +1,11 @@
 <?php
 
-namespace NastuzziSamy\Laravel\CompositeFields;
+namespace LaravelORM\CompositeFields;
 
-use NastuzziSamy\Laravel\Traits\StaticCallable;
+use LaravelORM\Traits\StaticCallable;
+use LaravelORM\Interfaces\IsAField;
 
-abstract class CompositeField
+abstract class CompositeField implements IsAField
 {
     use StaticCallable;
 

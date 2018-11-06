@@ -1,17 +1,19 @@
 <?php
 
-namespace NastuzziSamy\Laravel\Fields;
+namespace LaravelORM\Fields;
 
 use Illuminate\Database\Schema\ColumnDefinition;
-use NastuzziSamy\Laravel\Traits\StaticCallable;
+use LaravelORM\Traits\StaticCallable;
+use LaravelORM\Interfaces\IsAField;
 
-abstract class Field
+abstract class Field implements IsAField
 {
     use StaticCallable;
 
     protected $name;
     protected $column;
     protected $type;
+    protected $visible = true;
     protected $fillable = true;
     protected $locked = false;
 
@@ -74,6 +76,7 @@ abstract class Field
         $this->column->name = $value;
     }
 
+
     public function getName() {
         return $this->name;
     }
@@ -92,6 +95,12 @@ abstract class Field
         $this->_checkLock();
 
         $this->fillable = $fillable;
+    }
+
+    protected function visible(bool $visible = true) {
+        $this->_checkLock();
+
+        $this->visible = $visible;
     }
 
     protected function _checkLock() {

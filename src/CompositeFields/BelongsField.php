@@ -1,9 +1,9 @@
 <?php
 
-namespace NastuzziSamy\Laravel\CompositeFields;
+namespace LaravelORM\CompositeFields;
 
-use NastuzziSamy\Laravel\Fields\IntegerField;
-use NastuzziSamy\Laravel\FakeFields\BelongsToField;
+use LaravelORM\Fields\IntegerField;
+use LaravelORM\FakeFields\BelongsToField;
 
 class BelongsField extends CompositeField
 {

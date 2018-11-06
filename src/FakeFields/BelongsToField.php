@@ -1,8 +1,6 @@
 <?php
 
-namespace NastuzziSamy\Laravel\FakeFields;
-
-use NastuzziSamy\Laravel\Traits\StaticCallable;
+namespace LaravelORM\FakeFields;
 
 class BelongsToField extends FakeField
 {

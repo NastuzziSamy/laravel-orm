@@ -2,6 +2,7 @@
 
 namespace LaravelORM\Interfaces;
 
-interface IsAPrimaryField
+interface IsAField
 {
+
 }
