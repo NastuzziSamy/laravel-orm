@@ -75,3 +75,28 @@ class BelongsField extends CompositeField
     public function get($model) {
         $this->relateToModel($model)->first();
     }
+
+    public function relateToModel($model) {
+        return $model->belongsTo($this->to, $this->off, $this->on);
+    }
+
+    public function scopeWhere($model, ...$args) {
+        return $model->where($this->name, ...$args);
+    }
+
+    public function getPreMigration() {
+        return [];
+    }
+
+    public function getMigration() {
+        return [];
+    }
+
+    public function getPostMigration() {
+        return [
+            'foreign' => $this->fields[0]->getName(),
+            'references' => $this->on,
+            'on' => (new $this->to)->getTable(),
+        ];
+    }
+}

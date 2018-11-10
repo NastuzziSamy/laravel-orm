@@ -11,17 +11,21 @@ use LaravelORM\Interfaces\{
     IsAField, IsAPrimaryField
 };
 
+use LaravelORM\Templates;
+
 class Schema
 {
     protected $model;
+    protected $table;
+
     protected $fields;
     protected $composites;
     protected $fakes;
+
+    protected $hasPrimary = false;
     protected $primary;
     protected $index;
     protected $unique;
-    protected $timestamps;
-    protected $timestampFields;
 
     protected $fieldManager;
     protected $locked;
@@ -29,6 +33,7 @@ class Schema
     public function __construct($model)
     {
         $this->model = $model;
+
         $this->fields = config('database.table.fields', []);
         $this->composites = config('database.table.composites', []);
         $this->fakes = config('database.table.fakes', []);
@@ -46,39 +51,10 @@ class Schema
 
     protected function _manipulateField($field) {
         if ($field instanceof IsAPrimaryField) {
-            $this->primary($field);
+            $this->primary();
         }
 
         return $field;
-    }
-
-    // TODO: Ajouter les conf par défaut pour chaque field s'il n'existe pas => StringField: [length: 256]
-    public function setField($name, $value) {
-        if ($this->hasField($name)) {
-            throw new \Exception('It is not allowed to reset the field '.$name);
-        }
-        else if (is_string($value)) {
-            $value = new $value();
-        }
-
-        if ($value instanceof Field) {
-            $this->fields[$name] = $this->_manipulateField($value->lock($name));
-        }
-        else if ($value instanceof CompositeField) {
-            $value->lock($name);
-            $this->composites[$value->getName()] = $value;
-
-            foreach ($value->getFields() as $field) {
-                $this->fields[$field->getName()] = $this->_manipulateField($field);
-            }
-
-            foreach ($value->getFakes() as $fake) {
-                $this->fakes[$fake->getName()] = $this->_manipulateField($fake);
-            }
-        }
-        else {
-            throw new \Exception('To set a specific field, you have to give a Field object/string');
-        }
     }
 
     public function hasField($name) {
@@ -113,21 +89,63 @@ class Schema
         return $this->fakes;
     }
 
-    public function hasFieldOrFake($name) {
-        return isset($this->getFieldsAndFakes()[$name]);
+    public function hasComposite($name) {
+        return isset($this->getComposites()[$name]);
     }
 
-    public function getFieldOrFake($name) {
-        if ($this->hasFieldOrFake($name)) {
-            return $this->getFieldsAndFakes()[$name];
+    public function getComposite($name) {
+        if ($this->hasComposite($name)) {
+            return $this->getComposites()[$name];
+        } else {
+            throw new \Exception($name.' fake field does not exist');
+        }
+    }
+
+    public function getComposites() {
+        return $this->composites;
+    }
+
+    public function has($name) {
+        return isset($this->all()[$name]);
+    }
+
+    public function get($name) {
+        if ($this->has($name)) {
+            return $this->all()[$name];
         } else {
             throw new \Exception($name.' real or fake field does not exist');
         }
     }
 
-    public function getFieldsAndFakes() {
+    // TODO: Ajouter les conf par défaut pour chaque field s'il n'existe pas => StringField: [length: 256]
+    public function set($name, $value) {
+        if ($this->has($name)) {
+            throw new \Exception('It is not allowed to reset the field '.$name);
+        }
+        else if (is_string($value)) {
+            $value = new $value();
+        }
+
+        if ($value instanceof Field) {
+            $this->fields[$name] = $this->_manipulateField($value->lock($name));
+        }
+        else if ($value instanceof CompositeField) {
+            $value->lock($name);
+            $this->composites[$value->getName()] = $value;
+
+            foreach ($value->getFields() as $field) {
+                $this->fields[$field->getName()] = $this->_manipulateField($field);
+            }
+        }
+        else {
+            throw new \Exception('To set a specific field, you have to give a Field object/string');
+        }
+    }
+
+    public function all() {
         return array_merge(
             $this->fields,
+            $this->composites,
             $this->fakes
         );
     }
@@ -161,11 +179,18 @@ class Schema
     }
 
     public function primary(...$fields) {
-        if ($this->primary) {
+        if ($this->hasPrimary) {
             throw new \Exception('It is not possible de set primary fields after another');
         }
 
-        $this->primary = $fields;
+        $this->hasPrimary = true;
+
+        if (count($fields) === 1) {
+            $this->primary = $fields[0];
+        }
+        else if (count($fields) > 1) {
+            $this->primary = $fields;
+        }
 
         return $this;
     }
@@ -179,9 +204,19 @@ class Schema
                     if ($field instanceof string) {
                         $unique[] = $this->getField($field);
                     }
+                    else if ($field instanceof CompositeField) {
+                        if ($this->get($field->getName()) !== $field) {
+                            throw new \Exception('It is not allowed to use external composite fields');
+                        }
+                        else {
+                            foreach ($field->getFields() as $compositeField) {
+                                $unique[] = $compositeField;
+                            }
+                        }
+                    }
                     else if ($field instanceof IsAField) {
-                        if ($this->getFieldOrFake($field->getName()) !== $field) {
-                            throw new \Exception('It is not allowed to use external field as unique');
+                        if ($this->get($field->getName()) !== $field) {
+                            throw new \Exception('It is not allowed to use external field');
                         }
                         else {
                             $unique[] = $field;
@@ -197,8 +232,21 @@ class Schema
                 if ($field instanceof string) {
                     $this->getField($field)->unique();
                 }
+                else if ($field instanceof CompositeField) {
+                    if ($this->get($field->getName()) !== $field) {
+                        throw new \Exception('It is not allowed to use external composite fields');
+                    }
+                    else {
+                        return $this->unique(...$field->getFields());
+                    }
+                }
                 else if ($field instanceof IsAField) {
-                    $field->unique();
+                    if ($this->get($field->getName()) !== $field) {
+                        throw new \Exception('It is not allowed to use external field');
+                    }
+                    else {
+                        $field->unique();
+                    }
                 }
             }
         }
@@ -208,8 +256,8 @@ class Schema
 
     public function timestamps() {
         try {
-            $this->setField($this->model::CREATED_AT ?? 'created_at', TimestampField::nullable());
-            $this->setField($this->model::UPDATED_AT ?? 'updated_at', TimestampField::nullable());
+            $this->set($this->model::CREATED_AT ?? 'created_at', TimestampField::nullable());
+            $this->set($this->model::UPDATED_AT ?? 'updated_at', TimestampField::nullable());
         } catch (\Exception $e) {
             throw new \Exception('Can not set timestamps. Maybe already set ?');
         }
@@ -224,5 +272,59 @@ class Schema
         if ($name === 'fields') {
             return $this->fieldManager;
         }
+    }
+
+    public function generateMigration() {
+        $edit = [];
+        $add = [];
+        $remove = [];
+        $link = [];
+        $set = [];
+
+        foreach ($this->all() as $field) {
+            $attributes = $field->getPreMigration();
+            if (count($attributes)) $edit[] = $attributes;
+
+            $attributes = $field->getMigration();
+            if (count($attributes)) $add[] = $attributes;
+
+            $attributes = $field->getPostMigration();
+            if (count($attributes)) $link[] = $attributes;
+        }
+
+        if ($this->hasPrimary) {
+            if ($this->primary) {
+                $set[] = [
+                    'primary' => $this->primary
+                ];
+            }
+        }
+        else {
+            print('No primary set');
+        }
+
+        if (count($this->index)) $set[] = $index;
+
+        foreach ($this->unique as $unique) {
+            if (count($this->index)) $set[] = $index;
+        }
+
+        $fields = [];
+
+        if (count($edit)) $fields[] = $edit;
+        if (count($add)) $fields[] = $add;
+        if (count($remove)) $fields[] = $remove;
+        if (count($link)) $fields[] = $link;
+        if (count($set)) $fields[] = $set;
+
+        $table = (new $this->model)->getTable();
+
+        return Templates::render('migration', [
+            'date' => now(),
+            'model' => $this->model,
+            'migrationClass' => 'Create'.ucfirst($table).'Table',
+            'table' => $table,
+            'fields' => $fields
+        ]);
     }
 }

@@ -13,9 +13,7 @@ abstract class FakeField implements IsAField
 
     protected $locked = false;
 
-    protected function __construct() {
-
-    }
+    protected function __construct() {}
 
     protected function _name($value) {
         $this->_checkLock();
@@ -57,4 +55,17 @@ abstract class FakeField implements IsAField
     abstract public function get($model);
     abstract public function relateToModel($model);
     abstract public function scopeWhere($model, ...$args);
+
+    public function getPreMigration() {
+        return [];
+    }
+
+    public function getMigration() {
+        return [];
+    }
+
+    public function getPostMigration() {
+        dump('a');
+        return [];
+    }
 }
