@@ -12,6 +12,8 @@ class IncrementField extends IntegerField implements IsAPrimaryField
     public function __construct()
     {
         parent::__construct(true);
+
+        $this->properties = [];
     }
 
     public function _getDefaultProperties(): array

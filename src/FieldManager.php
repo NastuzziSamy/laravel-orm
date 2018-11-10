@@ -10,10 +10,10 @@ class FieldManager{
     }
 
     public function __get($name) {
-        return $this->schema->getFieldOrFake($name);
+        return $this->schema->get($name);
     }
 
     public function __set($name, $value) {
-        $this->schema->setField($name, $value);
+        $this->schema->set($name, $value);
     }
 };

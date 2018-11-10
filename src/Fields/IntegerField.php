@@ -9,23 +9,15 @@ class IntegerField extends Field
 
     public function __construct(bool $unsigned = false)
     {
-        $this->unsigned = $unsigned;
-
         parent::__construct();
-    }
 
-    protected function _getDefaultProperties(): array
-    {
-        return [
-            'unsigned' => $this->unsigned
-        ];
+        $this->unsigned($unsigned);
     }
 
     protected function unsigned(bool $unsigned = true) {
         $this->_checkLock();
 
         $this->unsigned = $unsigned;
-
-        return $this->column->unsigned($unsigned);
+        $this->properties['unsigned'] = $unsigned;
     }
 }

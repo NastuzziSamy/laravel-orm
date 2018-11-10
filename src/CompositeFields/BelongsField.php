@@ -10,9 +10,6 @@ class BelongsField extends CompositeField
     protected $fields = [
         IntegerField::class
     ];
-    protected $fakes = [
-        BelongsToField::class
-    ];
 
     protected $to;
     protected $on;
@@ -28,14 +25,14 @@ class BelongsField extends CompositeField
         $this->delimiter = $delimiter;
 
         parent::__construct($name);
+
+        $this->fields[0]->unsigned();
     }
 
     protected function _name($value) {
         $this->_checkLock();
 
         $name = $this->_generateFieldName($value, $this->identifier, $this->delimiter);
-
-        $this->fakes[0]->from($name);
 
         return parent::_name($value);
     }
@@ -66,8 +63,7 @@ class BelongsField extends CompositeField
 
         $response = parent::lock($name);
 
-        $this->fields[0]->to($this->to)->on($this->on)->lock($this->_generateFieldName($name, $this->identifier, $this->delimiter));
-        $this->fakes[0]->to($this->to)->on($this->on)->lock($name);
+        $this->fields[0]->lock($this->_generateFieldName($name, $this->identifier, $this->delimiter));
 
         return $response;
     }
@@ -75,4 +71,7 @@ class BelongsField extends CompositeField
     protected function _generateFieldName(string $name = null, string $identifier = null, string $delimiter = null) {
         return $name.$delimiter.$identifier;
     }
-}
+
+    public function get($model) {
+        $this->relateToModel($model)->first();
+    }

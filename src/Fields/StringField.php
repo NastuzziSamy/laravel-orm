@@ -5,23 +5,21 @@ namespace LaravelORM\Fields;
 class StringField extends Field
 {
     protected $type = 'string';
-    private $length;
+    protected $length;
 
     public function __construct(int $length = null)
     {
         parent::__construct();
+
+        if ($length) {
+            $this->unsigned($unsigned);
+        }
     }
 
-    public function _getDefaultProperties(): array
-    {
-        return [
-            'length' => $this->length
-        ];
-    }
+    protected function length(int $length) {
+        $this->_checkLock();
 
-    public function length(int $length = null) {
         $this->length = $length;
-
-        return $this->column->length($length);
+        $this->properties['length'] = $length;
     }
 }

@@ -11,7 +11,6 @@ abstract class CompositeField implements IsAField
 
     protected $name;
     protected $fields = [];
-    protected $fakes = [];
     protected $uniques = [];
 
     protected $locked = false;
@@ -21,12 +20,6 @@ abstract class CompositeField implements IsAField
         foreach ($this->fields as $key => $value) {
             if (is_string($value)) {
                 $this->fields[$key] = new $value;
-            }
-        }
-
-        foreach ($this->fakes as $key => $value) {
-            if (is_string($value)) {
-                $this->fakes[$key] = new $value;
             }
         }
     }

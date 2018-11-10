@@ -11,29 +11,29 @@ abstract class Field implements IsAField
     use StaticCallable;
 
     protected $name;
-    protected $column;
     protected $type;
+    protected $properties = [];
     protected $visible = true;
     protected $fillable = true;
     protected $locked = false;
 
-    public function __construct()
-    {
-        $this->column = new ColumnDefinition(array_merge(
-            $this->_getDefaultProperties(),
-            [
-                'type' => $this->type,
-            ]
-        ));
-    }
+    public function __construct() {}
 
     public function __call(string $method, array $args) {
-        $this->_checkLock();
-
         if (method_exists($this, $method)) {
             return $this->$method(...$args) ?? $this;
         } else {
-            $this->column = $this->column->$method(...$args);
+            $this->_checkLock();
+
+            if (count($args) === 0) {
+                $this->properties[$method] = true;
+            }
+            elseif (count($args) === 1) {
+                $this->properties[$method] = $args[0];
+            }
+            else {
+                $this->properties[$method] = $args;
+            }
 
             return $this;
         }
@@ -45,7 +45,7 @@ abstract class Field implements IsAField
             return $this->$key;
         }
         else {
-            return $this->column->$key;
+            return $this->properties[$key];
         }
     }
 
@@ -53,40 +53,45 @@ abstract class Field implements IsAField
     {
         $this->_checkLock();
 
-        $this->column->$key = $value;
+        $this->properties[$key] = $value;
     }
 
     public function __isset($key)
     {
-        return isset($this->column->$key);
+        return isset($this->properties[$key]);
     }
 
     public function __unset($key)
     {
         $this->_checkLock();
 
-        unset($this->column->$key);
+        unset($this->properties[$key]);
     }
 
-    protected function _name(string $value) {
-        $this->_checkLock();
-
-        $this->name = $value;
-
-        $this->column->name = $value;
+    public function getProperties() {
+        return $this->properties;
     }
 
+    public function hasProperty($key) {
+        return $this->__isset($key);
+    }
+
+    public function getProperty($key) {
+        return $this->__get($key);
+    }
+
+    public function setProperty($key, $value) {
+        return $this->__set($key, $value);
+    }
 
     public function getName() {
         return $this->name;
     }
 
-    public function getFieldName() {
-        return $this->name;
-    }
-
     protected function lock(string $name) {
-        $this->_name($name);
+        $this->_checkLock();
+
+        $this->name = $name;
 
         $this->locked = true;
     }
@@ -108,8 +113,6 @@ abstract class Field implements IsAField
             throw new \Exception('The field is locked, nothing can change');
         }
     }
-
-    abstract protected function _getDefaultProperties(): array;
 
     public function get($model) {
         $value = $model->getAttribute($this->name);
@@ -154,6 +157,20 @@ abstract class Field implements IsAField
     }
 
     public function scopeWhere($model, ...$args) {
-        return $model->where($this->columnName, ...$args);
+        return $model->where($this->name, ...$args);
+    }
+
+    public function getPreMigration() {
+        return [];
+    }
+
+    public function getMigration() {
+        return array_merge([
+            $this->type => $this->getName(),
+        ], $this->getProperties());
+    }
+
+    public function getPostMigration() {
+        return [];
     }
 }

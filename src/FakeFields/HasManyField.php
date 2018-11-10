@@ -2,7 +2,7 @@
 
 namespace LaravelORM\FakeFields;
 
-class BelongsToField extends FakeField
+class HasManyField extends FakeField
 {
     protected $off;
     protected $to;
@@ -39,15 +39,15 @@ class BelongsToField extends FakeField
         $this->relateToModel($model)->first();
     }
 
-    public function getFieldName() {
-        return $this->off;
+    public function getFieldNames() {
+        return [$this->off];
     }
 
     public function relateToModel($model) {
-        return $model->belongsTo($this->to, $this->off, $this->on);
+        return $model->hasMany($this->to, $this->on, $this->off);
     }
 
     public function scopeWhere($model, ...$args) {
-        return $model->where($this->columnName, ...$args);
+        return $model->where($this->name, ...$args);
     }
 }
