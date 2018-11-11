@@ -117,6 +117,10 @@ abstract class Field implements IsAField
         return $this;
     }
 
+    public function hidden(bool $hidden = true) {
+        return $this->visible(!$hidden);
+    }
+
     public function checkLock() {
         if ($this->locked) {
             throw new \Exception('The field is locked, nothing can change');
