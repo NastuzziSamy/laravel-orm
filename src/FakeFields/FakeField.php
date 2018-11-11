@@ -2,45 +2,45 @@
 
 namespace LaravelORM\FakeFields;
 
-use LaravelORM\Traits\StaticCallable;
 use LaravelORM\Interfaces\IsAField;
 
 abstract class FakeField implements IsAField
 {
-    use StaticCallable;
-
     protected $name;
-
     protected $locked = false;
 
-    protected function __construct() {}
+    public function __construct() {}
 
-    protected function _name($value) {
-        $this->_checkLock();
-
-        $this->name = $value;
-
-        return $this;
+    public static function new(...$args) {
+        return new static(...$args);
     }
 
     public function getName() {
         return $this->name;
     }
 
-    public function getFieldName() {
-        return $this->name;
+    protected function setName($value) {
+        $this->name = $value;
+
+        return $this;
     }
 
-    protected function lock(string $name) {
-        $this->_name($name);
+    public function lock(string $name) {
+        $this->checkLock();
+
+        $this->name($name);
 
         $this->locked = true;
+
+        return $this;
     }
 
-    protected function _checkLock() {
+    public function checkLock() {
         if ($this->locked) {
             throw new \Exception('The field is locked, nothing can change');
         }
+
+        return $this;
     }
 
     public function call($model, ...$args) {
@@ -65,7 +65,6 @@ abstract class FakeField implements IsAField
     }
 
     public function getPostMigration() {
-        dump('a');
         return [];
     }
 }

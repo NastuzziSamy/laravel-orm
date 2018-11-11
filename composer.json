@@ -1,7 +1,7 @@
 {
-    "name": "nastuzzi-samy/laravel-orm",
+    "name": "laravel-orm/laravel-orm",
     "description": "Describe your table fields in the model and let Laravel manage your migration for you",
-    "keywords": ["ORM", "Laravel", "Model", "Migration", "Automatic", "Auto", "Fields", "Field", "Uuid", "Meta", "Table", "Database"],
+    "keywords": ["ORM", "Laravel", "Model", "Migration", "Automatic", "Auto", "Fields", "Field", "Uuid", "Meta", "Table", "Database", "Validations"],
     "license": "GNU",
     "require": {
         "php": ">=7.1.3",

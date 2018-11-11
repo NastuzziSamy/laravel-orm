@@ -12,14 +12,16 @@ class StringField extends Field
         parent::__construct();
 
         if ($length) {
-            $this->unsigned($unsigned);
+            $this->length($length);
         }
     }
 
-    protected function length(int $length) {
-        $this->_checkLock();
+    public function length(int $length) {
+        $this->checkLock();
 
         $this->length = $length;
         $this->properties['length'] = $length;
+
+        return $this;
     }
 }

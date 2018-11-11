@@ -14,10 +14,12 @@ class IntegerField extends Field
         $this->unsigned($unsigned);
     }
 
-    protected function unsigned(bool $unsigned = true) {
-        $this->_checkLock();
+    public function unsigned(bool $unsigned = true) {
+        $this->checkLock();
 
         $this->unsigned = $unsigned;
         $this->properties['unsigned'] = $unsigned;
+
+        return $this;
     }
 }

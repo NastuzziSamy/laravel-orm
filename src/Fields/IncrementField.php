@@ -18,7 +18,7 @@ class IncrementField extends IntegerField implements IsAPrimaryField
 
     public function getMigration() {
         return array_merge([
-            'increments' => $this->name,
+            'increments' => $this->getName(),
         ], $this->getProperties());
     }
 }
