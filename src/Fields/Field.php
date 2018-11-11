@@ -3,13 +3,10 @@
 namespace LaravelORM\Fields;
 
 use Illuminate\Database\Schema\ColumnDefinition;
-use LaravelORM\Traits\StaticCallable;
 use LaravelORM\Interfaces\IsAField;
 
 abstract class Field implements IsAField
 {
-    use StaticCallable;
-
     protected $name;
     protected $type;
     protected $properties = [];
@@ -19,24 +16,24 @@ abstract class Field implements IsAField
 
     public function __construct() {}
 
+    public static function new(...$args) {
+        return new static(...$args);
+    }
+
     public function __call(string $method, array $args) {
-        if (method_exists($this, $method)) {
-            return $this->$method(...$args) ?? $this;
-        } else {
-            $this->_checkLock();
+        $this->checkLock();
 
-            if (count($args) === 0) {
-                $this->properties[$method] = true;
-            }
-            elseif (count($args) === 1) {
-                $this->properties[$method] = $args[0];
-            }
-            else {
-                $this->properties[$method] = $args;
-            }
-
-            return $this;
+        if (count($args) === 0) {
+            $this->properties[$method] = true;
         }
+        elseif (count($args) === 1) {
+            $this->properties[$method] = $args[0];
+        }
+        else {
+            $this->properties[$method] = $args;
+        }
+
+        return $this;
     }
 
     public function __get($key)
@@ -51,7 +48,7 @@ abstract class Field implements IsAField
 
     public function __set($key, $value)
     {
-        $this->_checkLock();
+        $this->checkLock();
 
         $this->properties[$key] = $value;
     }
@@ -63,7 +60,7 @@ abstract class Field implements IsAField
 
     public function __unset($key)
     {
-        $this->_checkLock();
+        $this->checkLock();
 
         unset($this->properties[$key]);
     }
@@ -88,30 +85,44 @@ abstract class Field implements IsAField
         return $this->name;
     }
 
-    protected function lock(string $name) {
-        $this->_checkLock();
+    protected function setName($value) {
+        $this->name = $value;
 
-        $this->name = $name;
+        return $this;
+    }
+
+    public function lock(string $name) {
+        $this->checkLock();
+
+        $this->setName($name);
 
         $this->locked = true;
+
+        return $this;
     }
 
-    protected function fillable(bool $fillable = true) {
-        $this->_checkLock();
+    public function fillable(bool $fillable = true) {
+        $this->checkLock();
 
         $this->fillable = $fillable;
+
+        return $this;
     }
 
-    protected function visible(bool $visible = true) {
-        $this->_checkLock();
+    public function visible(bool $visible = true) {
+        $this->checkLock();
 
         $this->visible = $visible;
+
+        return $this;
     }
 
-    protected function _checkLock() {
+    public function checkLock() {
         if ($this->locked) {
             throw new \Exception('The field is locked, nothing can change');
         }
+
+        return $this;
     }
 
     public function get($model) {
@@ -128,7 +139,7 @@ abstract class Field implements IsAField
 
             case 'bool':
             case 'boolean':
-                return (bool) $value ;
+                return (bool) $value;
 
             case 'float':
             case 'double':

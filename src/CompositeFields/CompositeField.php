@@ -2,13 +2,10 @@
 
 namespace LaravelORM\CompositeFields;
 
-use LaravelORM\Traits\StaticCallable;
 use LaravelORM\Interfaces\IsAField;
 
 abstract class CompositeField implements IsAField
 {
-    use StaticCallable;
-
     protected $name;
     protected $fields = [];
     protected $uniques = [];
@@ -24,46 +21,53 @@ abstract class CompositeField implements IsAField
         }
     }
 
-    protected function _name($value) {
-        $this->_checkLock();
-
-        $this->name = $value;
+    public static function new(...$args) {
+        return new static(...$args);
     }
 
     public function getName() {
         return $this->name;
     }
 
-    protected function unique() {
-        $this->_checkLock();
+    protected function setName($name) {
+        $this->name = $name;
 
-        $this->unique[] = $this->getFields();
+        return $this;
     }
 
-    protected function getFields()
+    public function unique() {
+        $this->checkLock();
+
+        $this->unique[] = $this->getFields();
+
+        return $this;
+    }
+
+    public function getFields()
     {
         return array_values($this->fields);
     }
 
-    protected function getFakes()
-    {
-        return array_values($this->fakes);
-    }
-
-    protected function getUniques()
+    public function getUniques()
     {
         return $this->uniques;
     }
 
-    protected function _checkLock() {
+    protected function checkLock() {
         if ($this->locked) {
             throw new \Exception('The composite field is locked, nothing can change');
         }
+
+        return $this;
     }
 
-    protected function lock(string $name) {
-        $this->_name($name);
+    public function lock(string $name) {
+        $this->checkLock();
+
+        $this->setName($name);
 
         $this->locked = true;
+
+        return $this;
     }
 }

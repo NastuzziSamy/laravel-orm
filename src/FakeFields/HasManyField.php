@@ -17,30 +17,32 @@ class HasManyField extends FakeField
         parent::__construct();
     }
 
-    protected function to(string $model) {
+    public function to(string $model) {
         $this->_checkLock();
 
         $this->to = $model;
+
+        return $this;
     }
 
-    protected function on(string $column) {
+    public function on(string $column) {
         $this->_checkLock();
 
         $this->on = $column;
+
+        return $this;
     }
 
-    protected function from(string $column) {
+    public function from(string $column) {
         $this->_checkLock();
 
         $this->off = $column;
+
+        return $this;
     }
 
     public function get($model) {
-        $this->relateToModel($model)->first();
-    }
-
-    public function getFieldNames() {
-        return [$this->off];
+        return $this->relateToModel($model)->first();
     }
 
     public function relateToModel($model) {

@@ -29,49 +29,74 @@ class BelongsField extends CompositeField
         $this->fields[0]->unsigned();
     }
 
-    protected function _name($value) {
-        $this->_checkLock();
+    protected function setName($value) {
+        $name = $this->generateFieldName($value, $this->identifier, $this->delimiter);
 
-        $name = $this->_generateFieldName($value, $this->identifier, $this->delimiter);
-
-        return parent::_name($value);
+        return parent::setName($value);
     }
 
-    protected function identifier($identifier, $delimiter = null) {
+    public function identifier($identifier, $delimiter = null) {
         $this->identifier = $identifier;
         $this->delimiter = $delimiter ?? $this->delimiter;
 
         return $this;
     }
 
-    protected function to(string $model) {
-        $this->_checkLock();
+    public function to(string $model) {
+        $this->checkLock();
 
         $this->to = $model;
+
+        return $this;
     }
 
-    protected function on(string $column) {
-        $this->_checkLock();
+    public function on(string $column) {
+        $this->checkLock();
 
         $this->on = $column;
+
+        return $this;
     }
 
-    protected function lock(string $name) {
+    public function lock(string $name) {
         if (!($this->to && $this->on)) {
             throw new \Exception('Related model settings needed. Set it by calling `to` method');
         }
 
-        $response = parent::lock($name);
+        $this->fields[0]->lock($this->generateFieldName($name, $this->identifier, $this->delimiter));
 
-        $this->fields[0]->lock($this->_generateFieldName($name, $this->identifier, $this->delimiter));
-
-        return $response;
+        return parent::lock($name);
     }
 
-    protected function _generateFieldName(string $name = null, string $identifier = null, string $delimiter = null) {
+    protected function generateFieldName(string $name = null, string $identifier = null, string $delimiter = null) {
         return $name.$delimiter.$identifier;
     }
 
     public function get($model) {
-        $this->relateToModel($model)->first();
+        return $this->relateToModel($model)->first();
     }
+
+    public function relateToModel($model) {
+        return $model->belongsTo($this->to, $this->off, $this->on);
+    }
+
+    public function scopeWhere($model, ...$args) {
+        return $model->where($this->name, ...$args);
+    }
+
+    public function getPreMigration() {
+        return [];
+    }
+
+    public function getMigration() {
+        return [];
+    }
+
+    public function getPostMigration() {
+        return [
+            'foreign' => $this->fields[0]->getName(),
+            'references' => $this->on,
+            'on' => (new $this->to)->getTable(),
+        ];
+    }
+}

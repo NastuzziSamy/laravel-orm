@@ -16,13 +16,9 @@ class IncrementField extends IntegerField implements IsAPrimaryField
         $this->properties = [];
     }
 
-    public function _getDefaultProperties(): array
-    {
-        return array_merge(
-            parent::_getDefaultProperties(),
-            [
-                'autoIncrement' => true,
-            ]
-        );
+    public function getMigration() {
+        return array_merge([
+            'increments' => $this->getName(),
+        ], $this->getProperties());
     }
 }
