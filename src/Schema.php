@@ -11,7 +11,7 @@ use LaravelORM\Interfaces\{
     IsAField, IsAPrimaryField
 };
 
-use LaravelORM\Templates;
+use LaravelORM\Template;
 
 class Schema
 {
@@ -256,8 +256,8 @@ class Schema
 
     public function timestamps() {
         try {
-            $this->set($this->model::CREATED_AT ?? 'created_at', TimestampField::nullable());
-            $this->set($this->model::UPDATED_AT ?? 'updated_at', TimestampField::nullable());
+            $this->set($this->model::CREATED_AT ?? 'created_at', TimestampField::new()->nullable());
+            $this->set($this->model::UPDATED_AT ?? 'updated_at', TimestampField::new()->nullable());
         } catch (\Exception $e) {
             throw new \Exception('Can not set timestamps. Maybe already set ?');
         }
@@ -317,14 +317,11 @@ class Schema
         if (count($link)) $fields[] = $link;
         if (count($set)) $fields[] = $set;
 
-        $table = (new $this->model)->getTable();
-
-        return Templates::render('migration', [
+        return [
             'date' => now(),
             'model' => $this->model,
-            'migrationClass' => 'Create'.ucfirst($table).'Table',
-            'table' => $table,
+            'table' => (new $this->model)->getTable(),
             'fields' => $fields
-        ]);
+        ];
     }
 }

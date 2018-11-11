@@ -13,29 +13,6 @@ use LaravelORM\CompositeFields\MorphField;
 use LaravelORM\Interfaces\IsACallableField;
 use App\User;
 
-class Options
-{
-    const TABLE = 0;
-    const INCREMENTS = 1;
-    const TIMESTAMPS = 2;
-}
-//
-// class BelongsToField extends IntegerField
-// {
-//     public function setName($name) {
-//         $this->name = $name.'_id';
-//
-//         return $this;
-//     }
-// }
-//
-//
-//
-// class CreatedField extends TimestampField
-// {
-//     protected $fillable = false;
-//     // protected $default = DB::raw('CURRENT_TIMESTAMP');
-// }
 
 class Model extends User
 {
@@ -56,12 +33,15 @@ class Model extends User
         // Créer des fields !
         $fields->id = IncrementField::class;
         $fields->name = StringField::class;
-        $fields->group = BelongsField::to(User::class);
-        //$schema->fields->owner = MorphField::class;
+        $fields->group = BelongsField::new()->to(User::class);
+        // $fields->string('email');
+        // $schema->fields->owner = MorphField::class;
         // $schema->fields->friends = ManyToManyField::class;
         // $schema->fields->friends = ManyToMorphField::class;
         // $schema->fields->owner = MorphField::only(User::class);
         $schema->timestamps();
+
+        # $fields->id->IncrementField();
 
         $schema->unique($fields->group, $fields->name);
     }

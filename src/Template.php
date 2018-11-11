@@ -2,16 +2,16 @@
 
 namespace LaravelORM;
 
-class Templates {
+class Template {
     protected static $engine;
     protected static $context;
 
     protected static function getEngine() {
         if (self::$engine === null) {
             self::$engine = new \Mustache_Engine([
-                'loader' => new \Mustache_Loader_FilesystemLoader(dirname(__FILE__)),
-                'partials_loader' => new \Mustache_Loader_FilesystemLoader(dirname(__FILE__).'/partials'),
-                'escape' => function($text) {
+                'loader' => new \Mustache_Loader_FilesystemLoader(dirname(__FILE__).'/Templates'),
+                'partials_loader' => new \Mustache_Loader_FilesystemLoader(dirname(__FILE__).'/Templates/partials'),
+                'escape' => function ($text) {
                     return $text;
                 },
                 'helpers' => self::getHelpers(),
@@ -31,8 +31,7 @@ class Templates {
             $value = json_encode($value);
 
             if (substr($value, 0, 1) === '"' && substr($value, -1) === '"') {
-                $value[0] = "'";
-                $value[strlen($value) - 1] = "'";
+                $value[0] = $value[strlen($value) - 1] = "'";
             }
 
             return $value;
