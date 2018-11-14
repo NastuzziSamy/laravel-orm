@@ -20,6 +20,6 @@ class Migration {
 
         $rendered = Template::render('migration', $dataForMigration);
 
-        file_put_contents(self::getPath().'/'.$dataForMigration['table'], $rendered);
+        file_put_contents(self::getPath().'/'.$dataForMigration['table'].'.php', $rendered);
     }
 }

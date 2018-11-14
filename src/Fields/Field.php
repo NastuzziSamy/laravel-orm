@@ -129,50 +129,20 @@ abstract class Field implements IsAField
         return $this;
     }
 
-    public function get($model) {
-        $value = $model->getAttribute($this->name);
-
-        if ($value === null) {
-            return $value;
-        }
-
-        switch ($this->type) {
-            case 'int':
-            case 'integer':
-                return (int) $value;
-
-            case 'bool':
-            case 'boolean':
-                return (bool) $value;
-
-            case 'float':
-            case 'double':
-            case 'real':
-                return (float) $value;
-
-            case 'string':
-                return (string) $value;
-
-            default:
-                return $value;
-        }
+    public function getValue($model, $value) {
+        return $value;
     }
 
-    public function call($model, ...$args) {
-        if (count($args) === 0) {
-            return $this->relateToModel($model);
-        }
-        else {
-            return $this->scopeWhere($model, ...$args);
-        }
+    public function setValue($model, $value) {
+        return $value;
     }
 
-    public function relateToModel($model) {
-        return $this;
+    public function relationValue($model) {
+        return $this->whereValue($model, $model->{$this->$name});
     }
 
-    public function scopeWhere($model, ...$args) {
-        return $model->where($this->name, ...$args);
+    public function whereValue($query, ...$args) {
+        return $query->where($this->name, ...$args);
     }
 
     public function getPreMigration() {
