@@ -3,7 +3,6 @@
 namespace LaravelORM\CompositeFields;
 
 use LaravelORM\Fields\IntegerField;
-use LaravelORM\FakeFields\BelongsToField;
 
 class BelongsField extends CompositeField
 {
@@ -72,16 +71,36 @@ class BelongsField extends CompositeField
         return $name.$delimiter.$identifier;
     }
 
-    public function get($model) {
-        return $this->relateToModel($model)->first();
+    public function getValue($model, $value) {
+        return $this->relationValue($model)->first();
     }
 
-    public function relateToModel($model) {
-        return $model->belongsTo($this->to, $this->off, $this->on);
+    public function setValue($model, $value) {
+        $model->setAttribute($this->fields[0]->getName(), $value->getKey());
+        $model->setRelation($this->name, $value);
     }
 
-    public function scopeWhere($model, ...$args) {
-        return $model->where($this->name, ...$args);
+    public function relationValue($model) {
+        return $model->belongsTo($this->to, $this->fields[0]->getName(), $this->on);
+    }
+
+    public function whereValue($query, ...$args) {
+        if (count($args) > 1) {
+            list($operator, $value) = $args;
+        }
+        else {
+            $operator = '=';
+            $value = $args[0] ?? null;
+        }
+
+        if (is_object($value)) {
+            $value = $value->getKey();
+        }
+        else if (!is_null($value)) {
+            $value = (integer) $value;
+        }
+
+        return $query->where($this->fields[0]->getName(), $operator, $value);
     }
 
     public function getPreMigration() {

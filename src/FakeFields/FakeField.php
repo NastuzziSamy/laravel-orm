@@ -53,6 +53,7 @@ abstract class FakeField implements IsAField
     }
 
     abstract public function get($model);
+    abstract public function set($model, $value);
     abstract public function relateToModel($model);
     abstract public function scopeWhere($model, ...$args);
 

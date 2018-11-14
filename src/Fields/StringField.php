@@ -24,4 +24,12 @@ class StringField extends Field
 
         return $this;
     }
+
+    public function getValue($model, $value) {
+        return is_null($value) ? $value : (string) $value;
+    }
+
+    public function setValue($model, $value) {
+        return is_null($value) ? $value : (string) $value;
+    }
 }
