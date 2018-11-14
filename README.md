@@ -57,9 +57,9 @@ class User extends Model {
         $fields->admin = BooleanField::new()->default(false)->hidden(); // Auto cast and hidden by default
         $fields->group = BelongsField::new()->to(Group::class);
 
-	    $schema->timestamps();
+        $schema->timestamps();
 
-	    $schema->unique([$fields->firstname, $fields->lastname]);
+        $schema->unique([$fields->firstname, $fields->lastname]);
     }
 }
 ```
@@ -73,7 +73,7 @@ Here we can now know all defined fields. The `group` relation is automatically d
 Part of the migration file:
 ```php
 Schema::create('users', function (Blueprint $table) {
-	$table->increments('id');
+    $table->increments('id');
     $table->string('firstname');
     $table->string('lastname');
     $table->string('email')->unique();
@@ -97,17 +97,23 @@ The previous file is generated via your model description.
 	// Get the first user
 	$user = User::first();
 	// Get with id 2
-	$user2 = User::where('id', 2)->first();
+	User::where('id', 2)->first();
 	// Get the email adress
 	$user->email;
 	// Set a bad format email adress
 	$user->email = 'bad-email';
 	// Set a good format email adress
 	$user->email = 'good@email.orm';
-	// Get user group
-	$user->group;
 	// Get user group relation
 	$user->group();
+	// Get user group
+	$group = $user->group;
+	// Search one user by group
+	$user = $user->where('group_id', $group->id)->first();
+	// Search all users by group
+	$user = $user->where('group_id', $group->id)->get();
+	// Search all users with a group id greater than specific one
+	$user = $user->where('group_id', '>', $group->id)->get();
 	// Get admin boolean (with casting)
 	$user->admin; // true
 	// Get admin boolean (without casting)
@@ -119,7 +125,7 @@ The previous file is generated via your model description.
 	// Get the first user
 	$user = User::first();
 	// Get with id 2
-	$user2 = User::id(2)->first();
+	$user2 = User::id(2);
 	// Get the email adress
 	$user->email;
 	/* Set a bad format email adress
@@ -131,10 +137,16 @@ The previous file is generated via your model description.
 	$user->email = 'bad-email'; // => bad-email@email.orm or Exception
 	// Set a good format email adress
 	$user->email = 'good@email.orm';
-	// Get user group
-	$user->group;
 	// Get user group relation
 	$user->group();
+	// Get user group
+	$group = $user->group;
+	// Search user by group
+	$user = $user->group($group);
+	// Search user by group
+	$user = $user->whereGroup($group)->get();
+	// Search all users with a group id greater than specific one
+	$user = $user->whereGroup('>', $group)->get();
 	// Get admin boolean (auto casting)
 	$user->admin; // true
 ```

@@ -70,4 +70,31 @@ abstract class CompositeField implements IsAField
 
         return $this;
     }
+
+    public function get($mode, $value) {
+        return $value;
+    }
+
+    public function set($mode, $value) {
+        $model->setAttribute($this->name, $value);
+
+        return $this;
+    }
+
+    public function call($model, ...$args) {
+        if (count($args) === 0) {
+            return $this->relateToModel($model);
+        }
+        else {
+            return $this->scopeWhere($model, ...$args);
+        }
+    }
+
+    public function relateToModel($model) {
+        return $this;
+    }
+
+    public function scopeWhere($model, ...$args) {
+        return $model->where($this->name, ...$args);
+    }
 }
