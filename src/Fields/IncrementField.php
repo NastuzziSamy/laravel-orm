@@ -9,11 +9,12 @@ class IncrementField extends IntegerField implements IsAPrimaryField
     protected $column;
     protected $fillable = false;
 
-    public function __construct()
-    {
-        parent::__construct();
+    /* Default rules */
+    public const DEFAULT_INCREMENT = self::NOT_NULLABLE + self::VISIBLE + self::NOT_ZERO;
 
-        $this->properties = [];
+    public function __construct(int $rules = self::DEFAULT_INCREMENT, $default = null)
+    {
+        parent::__construct($rules, $default);
     }
 
     public function getMigration() {
