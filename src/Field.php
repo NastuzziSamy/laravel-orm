@@ -44,7 +44,7 @@ class Field {
         $this->checkLock();
 
         if (($rule & self::NULLABLE) === self::NULLABLE) {
-            $this->removeRule(self::NOT_NULLABLE);
+            $this->nullable();
         }
 
         $this->rules |= $rule;
@@ -55,7 +55,9 @@ class Field {
     protected function removeRule(int $rule) {
         $this->checkLock();
 
-        $this->rules ^= $rule;
+        if ($this->hasRule($rule)) {
+            $this->rules ^= $rule;
+        }
 
         return $this;
     }

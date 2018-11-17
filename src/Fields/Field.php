@@ -157,9 +157,10 @@ abstract class Field extends BaseField implements IsAField
 
         if ($nullable) {
             $this->rules |= self::NULLABLE;
+            $this->removeRule(self::NOT_NULLABLE);
         }
         else {
-            $this->rules ^= self::NOT_NULLABLE;
+            $this->removeRule(self::NULLABLE);
         }
 
         $this->properties['nullable'] = $nullable;
@@ -175,18 +176,18 @@ abstract class Field extends BaseField implements IsAField
         return $this;
     }
 
-    public function castValue($value) {
+    protected function castValue($value) {
         return $value;
     }
 
     public function getValue($model, $value) {
-        return is_null($value) ? $value : $this->castValue($value);
+        return $this->castValue($value);
     }
 
     public function setValue($model, $value) {
-        $value = is_null($value) ? $value : $this->castValue($value);
+        $value = $this->castValue($value);
 
-        if (is_null($value) && !$this->nullable) {
+        if (is_null($value) && $this->hasRule(self::NOT_NULLABLE, self::STRICT)) {
             throw new \Exception($this->name.' can not be null');
         }
 

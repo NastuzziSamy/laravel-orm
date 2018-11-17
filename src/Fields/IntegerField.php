@@ -76,13 +76,16 @@ class IntegerField extends Field
         return $this;
     }
 
-    public function castValue($value) {
-        return (int) $value;
+    protected function castValue($value) {
+        return is_null($value) ? $value : (int) $value;
     }
 
     public function setValue($model, $value) {
         $value = parent::setValue($model, $value);
 
+        if (is_null($value)) {
+            return $value;
+        }
         if ($value === 0) {
             if ($this->hasRule(self::NOT_ZERO, self::STRICT)) {
                 throw new \Exception('Cannot set the value 0 for the field `'.$this->name.'`');
@@ -96,7 +99,7 @@ class IntegerField extends Field
             }
 
             if ($newValue !== $value && $this->hasRule(self::NEED_SIGN, self::STRICT)) {
-                throw new \Exception('The value is must be '.($this->hasRule(self::NEGATIVITY) ? 'negative' : 'positive').' for the field `'.$this->name.'`');
+                throw new \Exception('The value must be '.($this->hasRule(self::NEGATIVITY) ? 'negative' : 'positive').' for the field `'.$this->name.'`');
             }
 
             $value = $newValue;

@@ -7,20 +7,20 @@ use LaravelORM\CompositeFields\CompositeField;
 use LaravelORM\Builder;
 use Illuminate\Support\Str;
 
-Trait HasORM {
+trait HasORM {
     protected static $schema;
 
     public function __construct(...$args) {
-        return parent::__construct(...$args);
+        $return = parent::__construct(...$args);
 
         $schema = self::getSchema();
 
         $this->fillable = $schema->getFillableFields();
         $this->visible = $schema->getVisibleFields();
 
-        $this->setPrimary($schema->getPrimary());
+        $this->setKeyName($schema->getPrimary());
 
-        $this->buildFieldsScopes();
+        return $return;
     }
 
     protected static function generateSchema() {
@@ -40,11 +40,27 @@ Trait HasORM {
         return self::generateSchema();
     }
 
+    public static function hasField($key)
+    {
+        return self::getSchema()->has($key);
+    }
+
+    public static function getField($key)
+    {
+        return self::getSchema()->get($key);
+    }
+
+    public function cast($key, $value) {
+        if ($this->hasField($key)) {
+            return $this->getField($key)->setValue($this, $value);
+        }
+    }
+
     public function __call($method, $args) {
         $key = Str::snake($method);
 
-        if (self::getSchema()->has($key)) {
-            $field = self::getSchema()->get($key);
+        if (self::hasField($key)) {
+            $field = self::getField($key);
 
             if (count($args) === 0) {
                 return $field->relationValue($this);
@@ -53,7 +69,11 @@ Trait HasORM {
                 return $field->whereValue($this, ...$args);
             }
         } else {
-            return parent::__call($method, $args);
+            if (Str::startsWith($key, 'cast_')) {
+                return $this->cast(Str::after($key, 'cast_'), $args[0]);
+            } else {
+                return parent::__call($method, $args);
+            }
         }
     }
 
@@ -93,8 +113,8 @@ Trait HasORM {
 
         // If the user did not set any custom methods to handle this attribute,
         // we call the field getter.
-        if (self::getSchema()->has($key)) {
-            return self::getSchema()->get($key)->getValue($this, $value);
+        if (self::hasField($key)) {
+            return self::getField($key)->getValue($this, $value);
         }
 
         return $value;
@@ -122,7 +142,7 @@ Trait HasORM {
             return $this->getRelationshipFromMethod($key);
         }
 
-        if (self::getSchema()->has($key)) {
+        if (self::getSchema()->hasComposite($key) || self::getSchema()->hasFake($key)) {
             return $this->getRelationshipFromSchema($key);
         }
     }
@@ -182,8 +202,8 @@ Trait HasORM {
 
         $key = Str::snake($key);
 
-        if (self::getSchema()->has($key)) {
-            $field = self::getSchema()->get($key);
+        if (self::hasField($key)) {
+            $field = self::getField($key);
 
             $value = $field->setValue($this, $value);
 
@@ -195,6 +215,10 @@ Trait HasORM {
         $this->attributes[$key] = $value;
 
         return $this;
+    }
+
+    public function relation($key) {
+        return self::getField($key)->relationValue($this);
     }
 
     /**

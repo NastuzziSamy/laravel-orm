@@ -60,7 +60,7 @@ class StringField extends Field
         return $this;
     }
 
-    public function castValue($value) {
+    protected function castValue($value) {
         return (string) $value;
     }
 

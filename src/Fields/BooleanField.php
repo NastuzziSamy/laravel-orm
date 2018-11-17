@@ -17,7 +17,7 @@ class BooleanField extends Field
         return parent::default($value);
     }
 
-    public function castValue($value) {
-        return (boolean) $value;
+    protected function castValue($value) {
+        return is_null($value) ? $value : (bool) $value;
     }
 }
