@@ -35,7 +35,7 @@ class StringField extends Field
     /* Default rules */
     public const DEFAULT_STRING = self::NOT_NULLABLE | self::NOT_BLANK | self::VISIBLE | self::FILLABLE;
 
-    public function __construct(int $rules = self::DEFAULT_STRING, $default = null) {
+    public function __construct($rules = 'DEFAULT_STRING', $default = null) {
         parent::__construct($rules, $default);
     }
 

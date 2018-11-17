@@ -20,9 +20,9 @@ abstract class Field extends BaseField implements IsAField
     protected $locked = false;
 
 
-    public function __construct(int $rules = self::DEFAULT_FIELD, $default = null)
+    public function __construct($rules = 'DEFAULT_FIELD', $default = null)
     {
-        $this->setRules($rules);
+        $this->addRules($rules);
         $this->default($default);
     }
 
@@ -132,7 +132,7 @@ abstract class Field extends BaseField implements IsAField
     }
 
     public function getDefault() {
-        if ($this->rules & self::NULLABLE && is_null($this->default)) {
+        if (is_null($this->default) && $this->hasRule(self::NOT_NULLABLE, self::STRICT)) {
             throw new \Exception("This field cannot be null");
         }
 
@@ -143,10 +143,11 @@ abstract class Field extends BaseField implements IsAField
         $this->checkLock();
 
         if (is_null($value)) {
-            $this->nullable();
+            unset($this->properties['default']);
         }
-
-        $this->properties['default'] = $value;
+        else {
+            $this->properties['default'] = $value;
+        }
 
         return $this;
     }

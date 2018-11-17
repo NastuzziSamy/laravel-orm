@@ -43,8 +43,8 @@ class Field {
     protected function addRule(int $rule) {
         $this->checkLock();
 
-        if ($rule & self::NULLABLE) {
-            $this->nullable(true);
+        if (($rule & self::NULLABLE) === self::NULLABLE) {
+            $this->removeRule(self::NOT_NULLABLE);
         }
 
         $this->rules |= $rule;
@@ -60,10 +60,24 @@ class Field {
         return $this;
     }
 
-    public function setRules(int $rules) {
+    protected function getRule(string $name) {
+        return constant(static::class.'::'.$name);
+    }
+
+    public function addRules($rules) {
         $this->checkLock();
 
-        $this->rules = self::NONE;
+        if (is_array($rules)) {
+            foreach ($rules as $rule) {
+                return $this->addRule($this->getRule($rule));
+            }
+
+            return $this;
+        }
+
+        if (is_string($rules)) {
+            return $this->addRule($this->getRule($rules));
+        }
 
         return $this->addRule($rules);
     }

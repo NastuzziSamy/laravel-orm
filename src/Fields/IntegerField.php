@@ -28,35 +28,41 @@ class IntegerField extends Field
     /* Except if the value is 0 */
     public const NOT_ZERO = 4096;
 
-    public function __construct(int $rules = self::DEFAULT_FIELD, $default = null) {
-        parent::__construct($rules, $default);
+    public function __construct($rules = 'DEFAULT_FIELD', $default = null) {
+        return parent::__construct($rules, $default);
+    }
 
-        if ($this->hasRule(self::UNSIGNED)) {
-            if ($this->hasRule(self::NEGATIVE)) {
-                $this->negative();
-            } else {
-                $this->positive();
-            }
+    protected function addRule(int $rule) {
+        $this->checkLock();
+
+        if (($rule & self::UNSIGNED) === self::UNSIGNED) {
+            $this->unsigned(true, !$this->hasRule(self::NEGATIVITY));
         }
+
+        return parent::addRule($rule);
     }
 
     public function unsigned(bool $unsigned = true, bool $positive = true) {
         $this->checkLock();
 
         $this->properties['unsigned'] = $unsigned;
-        $this->addRule(self::UNSIGNED);
 
-        if ($positive) {
-            return $this->positive();
+        if ($unsigned) {
+            if ($positive) {
+                return $this->positive();
+            }
+
+            return $this->negative();
         }
-
-        return $this->negative();
+        else {
+            return $this->removeRule(self::NEGATIVE);
+        }
     }
 
     public function positive() {
         $this->checkLock();
 
-        $this->addRule(self::POSITIVE);
+        $this->rules |= self::POSITIVE;
         $this->removeRule(self::NEGATIVITY);
 
         return $this;
@@ -65,7 +71,7 @@ class IntegerField extends Field
     public function negative() {
         $this->checkLock();
 
-        $this->addRule(self::NEGATIVE);
+        $this->rules |= self::NEGATIVE;
 
         return $this;
     }
