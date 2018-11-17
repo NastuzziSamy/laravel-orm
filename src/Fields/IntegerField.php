@@ -20,7 +20,7 @@ class IntegerField extends Field
 
     /* Indicate the value is negative */
     protected const NEGATIVITY = 1024;
-    public const NEGATIVE = self::NEGATIVITY + self::UNSIGNED;
+    public const NEGATIVE = self::NEGATIVITY | self::UNSIGNED;
 
     /* Except if the sign value is the wrong one */
     public const NEED_SIGN = 2048;

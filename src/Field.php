@@ -32,11 +32,11 @@ class Field {
     public const FILLABLE = 16;
 
     /* Default rules */
-    public const DEFAULT_FIELD = self::NOT_NULLABLE + self::VISIBLE + self::FILLABLE;
+    public const DEFAULT_FIELD = self::NOT_NULLABLE | self::VISIBLE | self::FILLABLE;
 
 
     public function hasRule(int $rule, int $jokerRule = null) {
-        return ($this->rules & $rule) > self::NONE
+        return ($this->rules & $rule) === $rule
             || (!is_null($jokerRule) && (($this->rules & $jokerRule) === $jokerRule));
     }
 
