@@ -50,15 +50,21 @@ use LaravelORM\Model;
 
 class User extends Model {
     protected function __schema($schema, $fields) {
-        $fields->id = IncrementField::class; // an increment field is by default unfillable
+        /* Increment fields are by default unfillable, not null,  not equal to 0, visible, positive and integer */
+        $fields->id = IncrementField::class;
+        /* String fields are by default fillable, not null and not blank */
         $fields->firstname = StringField::class;
         $fields->lastname = StringField::class;
+        /* Email fields are by default like string fields */
         $fields->email = EmailField::new()->unique();
-        $fields->admin = BooleanField::new()->default(false)->hidden(); // Auto cast and hidden by default
+        /* Boolean fields are by default fillable, not null and visible */
+        $fields->admin = BooleanField::new()->default(false)->hidden();
         $fields->group = BelongsField::new()->to(Group::class);
 
+        /* Generate all timestamps */
         $schema->timestamps();
 
+        /* Set first and lastname as unique */
         $schema->unique([$fields->firstname, $fields->lastname]);
     }
 }
@@ -98,12 +104,22 @@ The previous file is generated via your model description.
 	$user = User::first();
 	// Get with id 2
 	User::where('id', 2)->first();
+    // Set user with id 3
+    $user->id = 3;
 	// Get the email adress
 	$user->email;
 	// Set a bad format email adress
 	$user->email = 'bad-email';
 	// Set a good format email adress
 	$user->email = 'good@email.orm';
+    // Set the group_id with a string
+    $user->group_id = "2"; // "2"
+    // Set the group_id with a negative value
+    $user->group_id = -5; // -5
+    // Set the group_id with null
+    $user->group_id = null; // null
+    // Get users with the same lastname
+    User::where('lastname', $user->lastname)->get();
 	// Get user group relation
 	$user->group();
 	// Get user group
@@ -126,6 +142,8 @@ The previous file is generated via your model description.
 	$user = User::first();
 	// Get with id 2
 	$user2 = User::id(2);
+    // Set user with id 3
+    $user->id = 3; // Excepts because id is not fillable
 	// Get the email adress
 	$user->email;
 	/* Set a bad format email adress
@@ -137,6 +155,14 @@ The previous file is generated via your model description.
 	$user->email = 'bad-email'; // => bad-email@email.orm or Exception
 	// Set a good format email adress
 	$user->email = 'good@email.orm';
+    // Set the group_id with a string
+    $user->group_id = "2"; // 2 (auto casting)
+    // Set the group_id with a negative value
+    $user->group_id = -5; // Excepts, cannot be negative
+    // Set the group_id with null
+    $user->group_id = null; // Excepts, cannot be null
+    // Get users with the same lastname
+    $user->lastname()->get(); // Calling the field will automatically create a query with the field key and value
 	// Get user group relation
 	$user->group();
 	// Get user group

@@ -142,6 +142,8 @@ abstract class Field extends BaseField implements IsAField
     public function default($value = null) {
         $this->checkLock();
 
+        $value = $this->castValue($value);
+
         if (is_null($value)) {
             unset($this->properties['default']);
         }

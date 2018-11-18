@@ -61,7 +61,7 @@ class StringField extends Field
     }
 
     protected function castValue($value) {
-        return (string) $value;
+        return is_null($value) ? $value : (string) $value;
     }
 
     public function setValue($model, $value) {

@@ -205,11 +205,17 @@ trait HasORM {
         if (self::hasField($key)) {
             $field = self::getField($key);
 
-            $value = $field->setValue($this, $value);
-
             if ($field instanceof CompositeField) {
+                $field->setValue($this, $value);
+
                 return $this;
             }
+
+            if (!$this->isFillable($key)) {
+                throw new \Exception('The field '.$key.' is not fillable');
+            }
+
+            $value = $field->setValue($this, $value);
         }
 
         $this->attributes[$key] = $value;
