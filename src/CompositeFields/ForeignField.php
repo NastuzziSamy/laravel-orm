@@ -3,19 +3,26 @@
 namespace LaravelORM\CompositeFields;
 
 use LaravelORM\Fields\IntegerField;
+use LaravelORM\LinkFields\HasManyField;
+use Illuminate\Support\Str;
 
-class BelongsField extends CompositeField
+class ForeignField extends CompositeField
 {
     protected $fields = [
         IntegerField::class
+    ];
+    protected $links = [
+        HasManyField::class
     ];
 
     protected $to;
     protected $on;
     protected $delimiter;
     protected $identifier;
+    protected $reversedName;
 
-    public function __construct(string $model = null, string $column = 'id', string $name = null, string $identifier = 'id', string $delimiter = '_')
+
+    public function __construct(string $model = null, string $column = 'id', string $identifier = 'id', string $delimiter = '_')
     {
         $this->to = $model;
         $this->on = $column;
@@ -23,7 +30,7 @@ class BelongsField extends CompositeField
         $this->identifier = $identifier;
         $this->delimiter = $delimiter;
 
-        parent::__construct($name);
+        parent::__construct();
 
         $this->fields[0]->unsigned();
     }
@@ -41,10 +48,11 @@ class BelongsField extends CompositeField
         return $this;
     }
 
-    public function to(string $model) {
+    public function to(string $model, string $reversedName = null) {
         $this->checkLock();
 
         $this->to = $model;
+        $this->reversedName = $this->reversedName ?? $reversedName;
 
         return $this;
     }
@@ -57,18 +65,45 @@ class BelongsField extends CompositeField
         return $this;
     }
 
-    public function lock(string $name) {
+    protected function ownFields() {
         if (!($this->to && $this->on)) {
             throw new \Exception('Related model settings needed. Set it by calling `to` method');
         }
 
-        $this->fields[0]->lock($this->generateFieldName($name, $this->identifier, $this->delimiter));
+        $this->fields[0]->own($this, $this->generateFieldName());
 
-        return parent::lock($name);
+        return $this;
     }
 
-    protected function generateFieldName(string $name = null, string $identifier = null, string $delimiter = null) {
-        return $name.$delimiter.$identifier;
+    protected function prepareComposite() {
+        $this->links[0]->own($this, $this->generateLinkName())
+            ->to($this->getOwner()->getModel())
+            ->from($this->on)
+            ->on($this->fields[0]->getName());
+
+        $this->to::getSchema()->set($this->links[0]->getName(), $this->links[0]);
+
+        return $this;
+    }
+
+    public function reversedName(string $reversedName) {
+        $this->checkLock();
+
+        $this->reversedName = $reversedName;
+
+        return $this;
+    }
+
+    protected function generateFieldName() {
+        return $this->name.$this->delimiter.$this->identifier;
+    }
+
+    protected function generateLinkName() {
+        if ($this->reversedName) {
+            return $this->reversedName;
+        } else {
+            return Str::plural($this->getOwner()->getModelName());
+        }
     }
 
     public function getValue($model, $value) {
@@ -76,7 +111,7 @@ class BelongsField extends CompositeField
     }
 
     public function setValue($model, $value) {
-        $model->setAttribute($this->fields[0]->getName(), $value->getKey());
+        $model->setAttribute($this->fields[0]->getName(), $value->{$this->on});
         $model->setRelation($this->name, $value);
     }
 
@@ -94,7 +129,7 @@ class BelongsField extends CompositeField
         }
 
         if (is_object($value)) {
-            $value = $value->getKey();
+            $value = $value->{$this->on};
         }
         else if (!is_null($value)) {
             $value = (integer) $value;
@@ -113,7 +148,7 @@ class BelongsField extends CompositeField
 
     public function getPostMigration() {
         return [
-            'foreign' => $this->fields[0]->getName(),
+            'link' => $this->fields[0]->getName(),
             'references' => $this->on,
             'on' => (new $this->to)->getTable(),
         ];
