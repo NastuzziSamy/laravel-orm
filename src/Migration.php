@@ -17,7 +17,6 @@ class Migration {
         $schema = $name::getSchema();
         $dataForMigration = $schema->generateMigration();
         $dataForMigration['name'] = 'Create'.ucfirst($dataForMigration['table']).'Table';
-
         $rendered = Template::render('migration', $dataForMigration);
 
         file_put_contents(self::getPath().'/'.$dataForMigration['table'].'.php', $rendered);

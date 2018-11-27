@@ -4,16 +4,27 @@ namespace LaravelORM\Traits;
 
 use LaravelORM\Schema;
 use LaravelORM\CompositeFields\CompositeField;
+use LaravelORM\LinkFields\LinkField;
 use LaravelORM\Builder;
 use Illuminate\Support\Str;
 
 trait HasORM {
     protected static $schema;
 
+    /**
+     * Prepare the model during the creation of the object.
+     * Add by default fillable fields, visible fields and the primary key.
+     *
+     * @param mixed $args
+     */
     public function __construct(...$args) {
         $return = parent::__construct(...$args);
 
-        $schema = self::getSchema();
+        $schema = static::getSchema();
+
+        if (!$schema->isLocked()) {
+            //throw new \Exception('The schema is not locked and cannot be used correctly');
+        }
 
         $this->fillable = $schema->getFillableFields();
         $this->visible = $schema->getVisibleFields();
@@ -23,44 +34,104 @@ trait HasORM {
         return $return;
     }
 
+    /**
+     * Generate one time the model schema.
+     *
+     * @return Schema
+     */
     protected static function generateSchema() {
-        if (!self::$schema) {
-            self::$schema = new Schema(self::class);
+        if (!static::$schema) {
+            static::$schema = new Schema(static::class);
 
-            self::__schema(self::$schema, self::$schema->fields);
+            static::__schema(static::$schema, static::$schema->fields);
 
-            self::$schema->lock();
+            static::$schema->prepare();
+
+            # lock doit être appelé par le processus de cloture du chargement
         }
 
-        return self::$schema;
+        return static::$schema;
     }
 
+    /**
+     * Get the model schema.
+     *
+     * @return Schema
+     */
     public static function getSchema()
     {
-        return self::generateSchema();
+        return static::generateSchema();
     }
 
-    public static function hasField($key)
+    /**
+     * Return if a field name exists or not.
+     * The name could be from one field, link field or composite field.
+     *
+     * @param  string  $key
+     * @return boolean
+     */
+    public static function hasField(string $key)
     {
-        return self::getSchema()->has($key);
+        return static::getSchema()->has($key);
     }
 
-    public static function getField($key)
+    /**
+     * Get a field from its name.
+     * The name could be from one field, link field or composite field.
+     *
+     * @param  string  $key
+     * @return mixed
+     *
+     * @throws Exception if the field does not exist.
+     */
+    public static function getField(string $key)
     {
-        return self::getSchema()->get($key);
+        return static::getSchema()->get($key);
     }
 
-    public function cast($key, $value) {
+    /**
+     * Return all fields: fields, link fields and composite fields.
+     *
+     * @return array
+     */
+    public static function getFields()
+    {
+        return static::getSchema()->all();
+    }
+
+    /**
+     * Cast and check a value for a specific key.
+     *
+     * @param  string $key   Name of the field.
+     * @param  mixed  $value
+     * @return mixed         The casted value.
+     */
+    public function cast(string $key, $value) {
         if ($this->hasField($key)) {
             return $this->getField($key)->setValue($this, $value);
         }
     }
 
+    /**
+     * Handle dynamically unknown calls.
+     * - name(): Returns the relation with the field
+     * - name(...$args): Returns a where condition
+     * - whereName(...$args): Returns a where condition
+     * - andName(...$args): Returns a where condition
+     * - orName(...$args): Returns a where condition
+     * - andWhereName(...$args): Returns a where condition
+     * - orWhereName(...$args): Returns a where condition
+     * - castName($value): Returns the casted value (can throw an exception)
+     *
+     * @param  mixed $method
+     * @param  mixed  $args
+     * @return mixed
+     */
     public function __call($method, $args) {
         $key = Str::snake($method);
 
-        if (self::hasField($key)) {
-            $field = self::getField($key);
+        if (static::hasField($key)) {
+            $field = static::getField($key);
 
             if (count($args) === 0) {
                 return $field->relationValue($this);
@@ -79,8 +150,9 @@ trait HasORM {
 
     /**
      * Get a plain attribute (not a relationship).
+     * Override the original method.
      *
-     * @param  string  $key
+     * @param  mixed  $key
      * @return mixed
      */
     public function getAttributeValue($key)
@@ -113,8 +185,8 @@ trait HasORM {
 
         // If the user did not set any custom methods to handle this attribute,
         // we call the field getter.
-        if (self::hasField($key)) {
-            return self::getField($key)->getValue($this, $value);
+        if (static::hasField($key)) {
+            return static::getField($key)->getValue($this, $value);
         }
 
         return $value;
@@ -122,6 +194,7 @@ trait HasORM {
 
     /**
      * Get a relationship.
+     * Override the original method.
      *
      * @param  string  $key
      * @return mixed
@@ -129,20 +202,21 @@ trait HasORM {
     public function getRelationValue($key)
     {
         // If the key already exists in the relationships array, it just means the
-        // relationship has already been loaded, so we'll just return it out of
+        // relationship has already been locked, so we'll just return it out of
         // here because there is no need to query within the relations twice.
         if ($this->relationLoaded($key)) {
             return $this->relations[$key];
         }
 
         // If the "attribute" exists as a method on the model, we will just assume
-        // it is a relationship and will load and return results from the query
+        // it is a relationship and will lock and return results from the query
         // and hydrate the relationship's value on the "relationships" array.
         if (method_exists($this, $key)) {
             return $this->getRelationshipFromMethod($key);
         }
 
-        if (self::getSchema()->hasComposite($key) || self::getSchema()->hasFake($key)) {
+        // Check if a composite of link field exist with this name and return the relation.
+        if (static::getSchema()->hasComposite($key) || static::getSchema()->hasLink($key)) {
             return $this->getRelationshipFromSchema($key);
         }
     }
@@ -157,15 +231,16 @@ trait HasORM {
      */
     protected function getRelationshipFromSchema($key)
     {
-        return tap(self::getSchema()->get($key)->getValue($this, $key), function ($results) use ($key) {
+        return tap(static::getSchema()->get($key)->getValue($this, $key), function ($results) use ($key) {
             $this->setRelation($key, $results);
         });
     }
 
     /**
      * Set a given attribute on the model.
+     * Override the original method.
      *
-     * @param  string  $key
+     * @param  mixed  $key
      * @param  mixed  $value
      * @return mixed
      */
@@ -202,15 +277,19 @@ trait HasORM {
 
         $key = Str::snake($key);
 
-        if (self::hasField($key)) {
-            $field = self::getField($key);
+        // Check if the field exists to cast the value.
+        if (static::hasField($key)) {
+            $field = static::getField($key);
 
-            if ($field instanceof CompositeField) {
+            // A composite field cannot set an attribute with its name.
+            if ($field instanceof CompositeField || $field instanceof LinkField) {
+                // Call the method to set the composed fields.
                 $field->setValue($this, $value);
 
                 return $this;
             }
 
+            // If the field is not fillable, throw an exception.
             if (!$this->isFillable($key)) {
                 throw new \Exception('The field '.$key.' is not fillable');
             }
@@ -223,12 +302,19 @@ trait HasORM {
         return $this;
     }
 
-    public function relation($key) {
-        return self::getField($key)->relationValue($this);
+    /**
+     * Get the relation value for a specific key.
+     *
+     * @param  string $key
+     * @return mixed
+     */
+    public function relation(string $key) {
+        return static::getField($key)->relationValue($this);
     }
 
     /**
      * Create a new Eloquent query builder for the model.
+     * Override the original method.
      *
      * @param  \Illuminate\Database\Query\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder|static
@@ -236,14 +322,5 @@ trait HasORM {
     public function newEloquentBuilder($query)
     {
         return new Builder($query);
-    }
-
-    /**
-     * Convert the model instance to an array.
-     *
-     * @return array
-     */
-    public function __toString() {
-        return (string) $this->getKey();
     }
 }

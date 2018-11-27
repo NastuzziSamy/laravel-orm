@@ -39,12 +39,12 @@ class StringField extends Field
         parent::__construct($rules, $default);
     }
 
-    public function lock(string $name) {
+    public function lock() {
         if ($this->hasRule(self::RESPECT_LENGTH) && is_null($this->length)) {
             throw new \Exception('No length set for '.$this->name);
         }
 
-        return parent::lock($name);
+        return parent::lock();
     }
 
     public function length(int $length) {

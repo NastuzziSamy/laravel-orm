@@ -41,7 +41,7 @@ class Template {
             'keyValue' => function ($text, $helper) {
                 $context = self::$context->getValue($helper)->last();
                 $engine = self::getEngine();
-                $loader = $engine->getLoader();
+                $locker = $engine->getLoader();
                 $engine->setLoader(new \Mustache_Loader_StringLoader);
                 $result = '';
 
@@ -49,7 +49,7 @@ class Template {
                     $result .= $engine->render($text, ['key' => $key, 'value' => $value]);
                 }
 
-                $engine->setLoader($loader);
+                $engine->setLoader($locker);
                 return $result;
             },
             'parameters' => function ($value) use ($encode) {
