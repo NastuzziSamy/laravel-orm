@@ -3,14 +3,20 @@
 namespace LaravelORM\CompositeFields;
 
 use LaravelORM\Interfaces\IsAField;
+use LaravelORM\Traits\{
+    IsOwnedAndLocked, IsPrepared
+};
 
 abstract class CompositeField implements IsAField
 {
-    protected $name;
+    use IsOwnedAndLocked, IsPrepared {
+        IsOwnedAndLocked::own as protected ownComposite;
+    }
+
     protected $fields = [];
+    protected $links = [];
     protected $uniques = [];
 
-    protected $locked = false;
 
     public function __construct()
     {
@@ -19,20 +25,16 @@ abstract class CompositeField implements IsAField
                 $this->fields[$key] = new $value;
             }
         }
+
+        foreach ($this->links as $key => $value) {
+            if (is_string($value)) {
+                $this->links[$key] = new $value;
+            }
+        }
     }
 
     public static function new(...$args) {
         return new static(...$args);
-    }
-
-    public function getName() {
-        return $this->name;
-    }
-
-    protected function setName($name) {
-        $this->name = $name;
-
-        return $this;
     }
 
     public function unique() {
@@ -42,6 +44,16 @@ abstract class CompositeField implements IsAField
 
         return $this;
     }
+
+    public function own($owner, string $name) {
+        $return = $this->ownComposite($owner, $name);
+
+        $this->ownFields();
+
+        return $return;
+    }
+
+    abstract protected function prepareComposite();
 
     public function getFields()
     {
@@ -53,48 +65,21 @@ abstract class CompositeField implements IsAField
         return $this->uniques;
     }
 
-    protected function checkLock() {
-        if ($this->locked) {
-            throw new \Exception('The composite field is locked, nothing can change');
-        }
-
-        return $this;
-    }
-
-    public function lock(string $name) {
-        $this->checkLock();
-
-        $this->setName($name);
-
-        $this->locked = true;
-
-        return $this;
-    }
-
-    public function get($mode, $value) {
+    public function getValue($mode, $value) {
         return $value;
     }
 
-    public function set($mode, $value) {
+    public function setValue($mode, $value) {
         $model->setAttribute($this->name, $value);
 
         return $this;
     }
 
-    public function call($model, ...$args) {
-        if (count($args) === 0) {
-            return $this->relateToModel($model);
-        }
-        else {
-            return $this->scopeWhere($model, ...$args);
-        }
-    }
-
-    public function relateToModel($model) {
+    public function relationValue($model) {
         return $this;
     }
 
-    public function scopeWhere($model, ...$args) {
+    public function whereValue($model, ...$args) {
         return $model->where($this->name, ...$args);
     }
 }

@@ -5,22 +5,24 @@ namespace LaravelORM;
 use LaravelORM\Fields\{
     Field, TimestampField
 };
+use LaravelORM\LinkFields\LinkField;
 use LaravelORM\CompositeFields\CompositeField;
-
 use LaravelORM\Interfaces\{
     IsAField, IsAPrimaryField
 };
-
+use LaravelORM\Traits\IsPrepared;
 use LaravelORM\Template;
 
 class Schema
 {
+    use IsPrepared;
+
     protected $model;
     protected $table;
 
     protected $fields;
     protected $composites;
-    protected $fakes;
+    protected $links;
 
     protected $hasPrimary = false;
     protected $primary;
@@ -28,15 +30,15 @@ class Schema
     protected $unique;
 
     protected $fieldManager;
-    protected $locked;
 
     public function __construct($model)
     {
         $this->model = $model;
+        $this->modelName = strtolower((new \ReflectionClass($model))->getShortName());
 
         $this->fields = config('database.table.fields', []);
         $this->composites = config('database.table.composites', []);
-        $this->fakes = config('database.table.fakes', []);
+        $this->links = config('database.table.links', []);
         $this->primary = config('database.table.primary');
         $this->index = config('database.table.index', []);
         $this->unique = config('database.table.unique', []);
@@ -49,7 +51,18 @@ class Schema
         $this->fieldManager = new FieldManager($this);
     }
 
-    protected function _manipulateField($field) {
+    public function getModel()
+    {
+        return $this->model;
+    }
+
+    public function getModelName()
+    {
+        return $this->modelName;
+    }
+
+    protected function manipulateField($field)
+    {
         if ($field instanceof IsAPrimaryField) {
             $this->primary();
         }
@@ -73,20 +86,20 @@ class Schema
         return $this->fields;
     }
 
-    public function hasFake($name) {
-        return isset($this->getFakes()[$name]);
+    public function hasLink($name) {
+        return isset($this->getLinks()[$name]);
     }
 
-    public function getFake($name) {
-        if ($this->hasFake($name)) {
-            return $this->getFakes()[$name];
+    public function getLink($name) {
+        if ($this->hasLink($name)) {
+            return $this->getLinks()[$name];
         } else {
-            throw new \Exception($name.' fake field does not exist');
+            throw new \Exception($name.' link field does not exist');
         }
     }
 
-    public function getFakes() {
-        return $this->fakes;
+    public function getLinks() {
+        return $this->links;
     }
 
     public function hasComposite($name) {
@@ -97,7 +110,7 @@ class Schema
         if ($this->hasComposite($name)) {
             return $this->getComposites()[$name];
         } else {
-            throw new \Exception($name.' fake field does not exist');
+            throw new \Exception($name.' link field does not exist');
         }
     }
 
@@ -113,7 +126,7 @@ class Schema
         if ($this->has($name)) {
             return $this->all()[$name];
         } else {
-            throw new \Exception($name.' real or fake field does not exist');
+            throw new \Exception($name.' real or link field does not exist');
         }
     }
 
@@ -127,17 +140,34 @@ class Schema
         }
 
         if ($value instanceof Field) {
-            $this->fields[$name] = $this->_manipulateField($value->lock($name));
-        }
-        else if ($value instanceof CompositeField) {
-            $value->lock($name);
-            $this->composites[$value->getName()] = $value;
+            $this->fields[$name] = $this->manipulateField($value)->own($this, $name);
+        } else if ($value instanceof CompositeField) {
+            $value->own($this, $name);
+
+            $this->composites[$value->getName()] = $this->manipulateField($value);
 
             foreach ($value->getFields() as $field) {
-                $this->fields[$field->getName()] = $this->_manipulateField($field);
+                if (!$field->isOwned()) {
+                    throw new \Exception('The field '.$name.' must be owned by the composed field '.$value->getName());
+                }
+
+                $this->fields[$field->getName()] = $this->manipulateField($field);
             }
-        }
-        else {
+        } else if ($value instanceof LinkField) {
+            if (!$this->preparing && !$this->prepared) {
+                throw new \Exception('You cannot set link fields. You must prepare the schema before the schema via the `__schema` method.');
+            }
+
+            if ($value->isOwned()) {
+                if ($value->getName() !== $name) {
+                    throw new \Exception('The link field name must be the same than the given one.');
+                }
+            } else {
+                throw new \Exception('The link field must be owned by a child of the oposite schema.');
+            }
+
+            $this->links[$name] = $value;
+        } else {
             throw new \Exception('To set a specific field, you have to give a Field object/string');
         }
     }
@@ -146,7 +176,7 @@ class Schema
         return array_merge(
             $this->fields,
             $this->composites,
-            $this->fakes
+            $this->links
         );
     }
 
@@ -174,12 +204,26 @@ class Schema
         return $visible;
     }
 
-    public function getPrimary() {
-        return $this->primary;
+    protected function prepareSchema() {
+        foreach ($this->getComposites() as $field) {
+            $field->prepare();
+        }
     }
 
     public function lock() {
+        foreach ($this->all() as $field) {
+            $field->lock();
+        }
+
         $this->locked = true;
+    }
+
+    public function isLocked() {
+        return $this->locked;
+    }
+
+    public function getPrimary() {
+        return $this->primary;
     }
 
     public function primary(...$fields) {

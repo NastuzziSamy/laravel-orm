@@ -2,7 +2,7 @@
 
 namespace LaravelORM;
 
-use LaravelORM\Traits\LaravelORM;
+use LaravelORM\Traits\HasORM;
 use Illuminate\Database\Eloquent\Model as BaseModel;
 
 class Model extends BaseModel

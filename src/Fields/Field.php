@@ -4,11 +4,13 @@ namespace LaravelORM\Fields;
 
 use Illuminate\Database\Schema\ColumnDefinition;
 use LaravelORM\Interfaces\IsAField;
+use LaravelORM\Traits\IsOwnedAndLocked;
 use LaravelORM\Field as BaseField;
 
 abstract class Field extends BaseField implements IsAField
 {
-    protected $name;
+    use IsOwnedAndLocked;
+
     protected $type;
     protected $default;
 
@@ -17,7 +19,6 @@ abstract class Field extends BaseField implements IsAField
 
     protected $visible = true;
     protected $fillable = true;
-    protected $locked = false;
 
 
     public function __construct($rules = 'DEFAULT_FIELD', $default = null)
@@ -35,11 +36,9 @@ abstract class Field extends BaseField implements IsAField
 
         if (count($args) === 0) {
             $this->properties[$method] = true;
-        }
-        elseif (count($args) === 1) {
+        } else if (count($args) === 1) {
             $this->properties[$method] = $args[0];
-        }
-        else {
+        } else {
             $this->properties[$method] = $args;
         }
 
@@ -89,26 +88,6 @@ abstract class Field extends BaseField implements IsAField
 
     public function setProperty($key, $value) {
         return $this->__set($key, $value);
-    }
-
-    public function getName() {
-        return $this->name;
-    }
-
-    protected function setName($value) {
-        $this->name = $value;
-
-        return $this;
-    }
-
-    public function lock(string $name) {
-        $this->checkLock();
-
-        $this->setName($name);
-
-        $this->locked = true;
-
-        return $this;
     }
 
     public function fillable(bool $fillable = true) {
@@ -166,14 +145,6 @@ abstract class Field extends BaseField implements IsAField
         }
 
         $this->properties['nullable'] = $nullable;
-
-        return $this;
-    }
-
-    public function checkLock() {
-        if ($this->locked) {
-            throw new \Exception('The field is locked, nothing can change');
-        }
 
         return $this;
     }
