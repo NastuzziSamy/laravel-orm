@@ -4,17 +4,27 @@ namespace LaravelORM\Fields;
 
 use Illuminate\Database\Schema\ColumnDefinition;
 use LaravelORM\Interfaces\IsAField;
+use LaravelORM\Field as BaseField;
 
-abstract class Field implements IsAField
+abstract class Field extends BaseField implements IsAField
 {
     protected $name;
     protected $type;
+    protected $default;
+
+    protected $rules;
     protected $properties = [];
+
     protected $visible = true;
     protected $fillable = true;
     protected $locked = false;
 
-    public function __construct() {}
+
+    public function __construct($rules = 'DEFAULT_FIELD', $default = null)
+    {
+        $this->addRules($rules);
+        $this->default($default);
+    }
 
     public static function new(...$args) {
         return new static(...$args);
@@ -121,6 +131,45 @@ abstract class Field implements IsAField
         return $this->visible(!$hidden);
     }
 
+    public function getDefault() {
+        if (is_null($this->default) && $this->hasRule(self::NOT_NULLABLE, self::STRICT)) {
+            throw new \Exception("This field cannot be null");
+        }
+
+        return $this->default;
+    }
+
+    public function default($value = null) {
+        $this->checkLock();
+
+        $value = $this->castValue($value);
+
+        if (is_null($value)) {
+            unset($this->properties['default']);
+        }
+        else {
+            $this->properties['default'] = $value;
+        }
+
+        return $this;
+    }
+
+    public function nullable(bool $nullable = true) {
+        $this->checkLock();
+
+        if ($nullable) {
+            $this->rules |= self::NULLABLE;
+            $this->removeRule(self::NOT_NULLABLE);
+        }
+        else {
+            $this->removeRule(self::NULLABLE);
+        }
+
+        $this->properties['nullable'] = $nullable;
+
+        return $this;
+    }
+
     public function checkLock() {
         if ($this->locked) {
             throw new \Exception('The field is locked, nothing can change');
@@ -129,16 +178,26 @@ abstract class Field implements IsAField
         return $this;
     }
 
-    public function getValue($model, $value) {
+    protected function castValue($value) {
         return $value;
     }
 
+    public function getValue($model, $value) {
+        return $this->castValue($value);
+    }
+
     public function setValue($model, $value) {
+        $value = $this->castValue($value);
+
+        if (is_null($value) && $this->hasRule(self::NOT_NULLABLE, self::STRICT)) {
+            throw new \Exception($this->name.' can not be null');
+        }
+
         return $value;
     }
 
     public function relationValue($model) {
-        return $this->whereValue($model, $model->{$this->$name});
+        return $this->whereValue($model, $model->{$this->name});
     }
 
     public function whereValue($query, ...$args) {

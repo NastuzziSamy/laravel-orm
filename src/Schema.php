@@ -154,7 +154,7 @@ class Schema
         $fillable = [];
 
         foreach ($this->getFields() as $name => $field) {
-            if ($field->fillable) {
+            if ($field->hasRule(Field::FILLABLE)) {
                 $fillable[] = $name;
             }
         }
@@ -166,12 +166,16 @@ class Schema
         $visible = [];
 
         foreach ($this->getFields() as $name => $field) {
-            if ($field->visible) {
+            if ($field->hasRule(Field::VISIBLE)) {
                 $visible[] = $name;
             }
         }
 
         return $visible;
+    }
+
+    public function getPrimary() {
+        return $this->primary;
     }
 
     public function lock() {
@@ -256,8 +260,12 @@ class Schema
 
     public function timestamps() {
         try {
-            $this->set($this->model::CREATED_AT ?? 'created_at', TimestampField::new()->nullable());
-            $this->set($this->model::UPDATED_AT ?? 'updated_at', TimestampField::new()->nullable());
+            $this->set($this->model::CREATED_AT ?? 'created_at', TimestampField::new(
+                Field::NOT_NULLABLE | Field::VISIBLE
+            )->useCurrent());
+            $this->set($this->model::UPDATED_AT ?? 'updated_at', TimestampField::new(
+                Field::NULLABLE | Field::VISIBLE
+            )->useCurrent());
         } catch (\Exception $e) {
             throw new \Exception('Can not set timestamps. Maybe already set ?');
         }
